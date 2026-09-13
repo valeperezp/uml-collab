@@ -1,0 +1,43 @@
+<div class="dashboard">
+  <header>
+    <div>
+      <h1>Mis diagramas</h1>
+      <p class="subtitle">Hola, {{ auth.current()?.displayName }}</p>
+    </div>
+    <button class="ghost" (click)="logout()">Cerrar sesión</button>
+  </header>
+
+  @if (error()) {
+    <div class="error">{{ error() }}</div>
+  }
+
+  <section class="actions">
+    <div class="card">
+      <h3>Nuevo diagrama</h3>
+      <input placeholder="Nombre (ej: FashionStore)" [(ngModel)]="newName" />
+      <input placeholder="Descripción (opcional)" [(ngModel)]="newDescription" />
+      <button (click)="create()">Crear</button>
+    </div>
+
+    <div class="card">
+      <h3>Unirme a un diagrama</h3>
+      <p class="hint">Pedile a un compañero el código de invitación de su diagrama.</p>
+      <input placeholder="Código (ej: A1B2C3D4)" [(ngModel)]="joinCode" style="text-transform: uppercase" />
+      <button (click)="join()">Unirme</button>
+    </div>
+  </section>
+
+  <section class="list">
+    @for (d of diagrams(); track d.id) {
+      <div class="diagram-row" (click)="open(d)">
+        <div>
+          <div class="name">{{ d.name }}</div>
+          <div class="meta">{{ d.classCount }} clase(s) · código {{ d.joinCode }}</div>
+        </div>
+        <span class="arrow">→</span>
+      </div>
+    } @empty {
+      <p class="hint">Todavía no creaste ningún diagrama.</p>
+    }
+  </section>
+</div>

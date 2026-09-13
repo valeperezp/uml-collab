@@ -1,0 +1,34 @@
+<div class="ai-panel">
+  <div class="header">
+    <strong>Asistente IA</strong>
+    <span class="hint">Editá el diagrama por texto, voz o subiendo una foto</span>
+  </div>
+
+  <div class="log">
+    @for (entry of log; track $index) {
+      <div class="entry" [class]="entry.role">{{ entry.text }}</div>
+    }
+    @if (busy) {
+      <div class="entry assistant">Pensando…</div>
+    }
+  </div>
+
+  <div class="composer">
+    <input
+      type="text"
+      placeholder='Ej: "crea una clase Cliente con nombre y correo"'
+      [(ngModel)]="text"
+      (keyup.enter)="send()"
+      [disabled]="busy"
+    />
+    @if (voiceSupported()) {
+      <button type="button" class="icon-btn" [class.active]="listening()" (click)="toggleVoice()" title="Hablar">
+        🎤
+      </button>
+    }
+    <button type="button" class="icon-btn" (click)="triggerImagePicker()" title="Subir foto del diagrama">📷</button>
+    <button type="button" class="send-btn" (click)="send()" [disabled]="busy || !text.trim()">Enviar</button>
+  </div>
+
+  <input #fileInput type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onFileChange($event)" />
+</div>

@@ -1,0 +1,9 @@
+<div class="presence-bar" [class.offline]="!connected">
+  <span class="dot" [class.online]="connected"></span>
+  <span class="status">{{ connected ? 'En vivo' : 'Conectando…' }}</span>
+  <div class="avatars">
+    @for (p of people; track p.userId) {
+      <span class="avatar" [style.background]="p.colorHex" [title]="p.displayName">{{ initials(p.displayName) }}</span>
+    }
+  </div>
+</div>

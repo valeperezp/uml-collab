@@ -1,0 +1,22 @@
+# Backend (Maven / Java)
+backend/target/
+*.class
+*.log
+
+# Frontend (Angular / Node)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/out-tsc/
+npm-debug.log*
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.local

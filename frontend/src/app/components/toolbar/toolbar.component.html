@@ -1,0 +1,20 @@
+<div class="toolbar">
+  <div class="left">
+    <button class="ghost" (click)="back.emit()">← Diagramas</button>
+    <div class="title">
+      <strong>{{ diagramName }}</strong>
+      <span class="code" (click)="copyJoinCode()" title="Copiar código de invitación">código: {{ joinCode }}</span>
+    </div>
+  </div>
+
+  <div class="right">
+    <button (click)="newClass.emit()">+ Clase</button>
+    <button class="ghost" (click)="exportXmi.emit()">Exportar XMI</button>
+    <button class="ghost" (click)="triggerImport()">Importar XMI</button>
+    <button class="primary" (click)="generateBackend.emit()" [disabled]="generating">
+      {{ generating ? 'Generando…' : '⚙ Generar backend' }}
+    </button>
+  </div>
+
+  <input #xmiInput type="file" accept=".xmi,.xml" hidden (change)="onXmiFile($event)" />
+</div>

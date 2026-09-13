@@ -1,0 +1,62 @@
+<div
+  class="class-box"
+  [class.locked]="disabled"
+  [class.connect-source]="connectSource"
+  [class.connect-target]="connecting && !connectSource"
+  [style.left.px]="classDto.x"
+  [style.top.px]="classDto.y"
+  (click)="bodyClick.emit()"
+>
+  <div class="header" (mousedown)="onHeaderMouseDown($event)">
+    @if (editingName()) {
+      <input
+        class="name-input"
+        [(ngModel)]="nameDraft"
+        (blur)="confirmName()"
+        (keyup.enter)="confirmName()"
+        (mousedown)="$event.stopPropagation()"
+        autofocus
+      />
+    } @else {
+      <span class="name" (dblclick)="startEditName()">{{ classDto.name }}</span>
+    }
+    @if (classDto.isAbstract) {
+      <span class="badge">abstract</span>
+    }
+    <button class="icon" title="Conectar" (mousedown)="$event.stopPropagation()" (click)="startConnect.emit(); $event.stopPropagation()">⇢</button>
+    <button class="icon danger" title="Eliminar clase" (mousedown)="$event.stopPropagation()" (click)="deleteClass.emit(); $event.stopPropagation()">✕</button>
+  </div>
+
+  @if (lockedByOther) {
+    <div class="lock-banner">🔒 editando: {{ lockedByOther }}</div>
+  }
+
+  <div class="attributes">
+    @for (attr of classDto.attributes; track attr.id) {
+      <div class="attr-row">
+        <span class="visibility">{{ visibilitySymbol(attr) }}</span>
+        <span class="attr-name" [class.pk]="attr.isPrimaryKey">{{ attr.name }}</span>
+        <span class="attr-type">: {{ attr.dataType | lowercase }}</span>
+        @if (attr.isPrimaryKey) {
+          <span class="pk-badge">PK</span>
+        }
+        <button class="icon small" (click)="removeAttribute.emit(attr.id); $event.stopPropagation()">✕</button>
+      </div>
+    }
+  </div>
+
+  @if (showAddAttribute()) {
+    <div class="add-attr-form" (click)="$event.stopPropagation()">
+      <input placeholder="nombre" [(ngModel)]="newAttrName" (keyup.enter)="confirmAddAttribute()" />
+      <select [(ngModel)]="newAttrType">
+        @for (t of dataTypes; track t) {
+          <option [value]="t">{{ t | lowercase }}</option>
+        }
+      </select>
+      <label class="pk-check"><input type="checkbox" [(ngModel)]="newAttrPk" /> PK</label>
+      <button (click)="confirmAddAttribute()">Agregar</button>
+    </div>
+  } @else {
+    <button class="add-attr-btn" [disabled]="disabled" (click)="toggleAddAttribute(); $event.stopPropagation()">+ atributo</button>
+  }
+</div>

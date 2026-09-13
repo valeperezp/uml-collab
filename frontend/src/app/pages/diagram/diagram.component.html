@@ -1,0 +1,109 @@
+<div class="diagram-page">
+  <app-toolbar
+    [diagramName]="diagram()?.name ?? ''"
+    [joinCode]="diagram()?.joinCode ?? ''"
+    [generating]="generatingBackend()"
+    (back)="goBack()"
+    (newClass)="addClass()"
+    (exportXmi)="exportXmi()"
+    (importXmi)="importXmi($event)"
+    (generateBackend)="generateBackend()"
+  ></app-toolbar>
+
+  <div class="body">
+    <div class="canvas-wrapper">
+      <div class="canvas-toolbar">
+        <app-presence-bar [people]="presence()" [connected]="connected()"></app-presence-bar>
+        @if (connectingFromClassId()) {
+          <span class="connect-hint">Elegí la clase destino para la relación… (o hacé click en ⇢ de nuevo para cancelar)</span>
+        }
+      </div>
+
+      <div #canvas class="canvas">
+        <svg class="relationships-layer">
+          @for (r of relationships(); track r.id) {
+            <g>
+              <line
+                [attr.x1]="relationshipPath(r).x1" [attr.y1]="relationshipPath(r).y1"
+                [attr.x2]="relationshipPath(r).x2" [attr.y2]="relationshipPath(r).y2"
+                [class]="'rel-line ' + r.type.toLowerCase()"
+              />
+            </g>
+          }
+        </svg>
+
+        @for (r of relationships(); track r.id) {
+          <div
+            class="rel-label"
+            [style.left.px]="relationshipPath(r).midX"
+            [style.top.px]="relationshipPath(r).midY"
+            (click)="onDeleteRelationship(r)"
+            [title]="'Click para eliminar · ' + r.sourceClassName + ' -> ' + r.targetClassName"
+          >
+            {{ relationshipLabel(r) }}
+          </div>
+        }
+
+        @for (c of classes(); track c.id) {
+          <app-class-box
+            [classDto]="c"
+            [lockedByOther]="lockOwnerNameFor(c.id)"
+            [connecting]="connectingFromClassId() !== null"
+            [connectSource]="connectingFromClassId() === c.id"
+            (dragStart)="onDragStart($event, c)"
+            (rename)="onRename(c, $event)"
+            (deleteClass)="onDeleteClass(c)"
+            (addAttribute)="onAddAttribute(c, $event)"
+            (removeAttribute)="onRemoveAttribute(c, $event)"
+            (startConnect)="onStartConnect(c)"
+            (bodyClick)="onBodyClick(c)"
+          ></app-class-box>
+        }
+
+        @if (classes().length === 0) {
+          <div class="empty-hint">
+            Todavía no hay clases. Usá "+ Clase", pedile al asistente de IA que cree una, o subí una foto del diagrama.
+          </div>
+        }
+      </div>
+    </div>
+
+    <app-ai-panel [log]="aiLog()" [busy]="aiBusy()" (command)="onAiCommand($event)" (imageSelected)="onAiImage($event)"></app-ai-panel>
+  </div>
+
+  @if (pendingRelationship(); as pending) {
+    <div class="modal-backdrop" (click)="cancelRelationship()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h3>{{ pending.sourceName }} → {{ pending.targetName }}</h3>
+        <label>
+          Tipo de relación
+          <select [(ngModel)]="relType">
+            @for (t of relationshipTypes; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </label>
+        @if (relType !== 'GENERALIZATION') {
+          <div class="mult-row">
+            <label>
+              Multiplicidad origen
+              <select [(ngModel)]="sourceMult">
+                @for (m of multiplicities; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+            </label>
+            <label>
+              Multiplicidad destino
+              <select [(ngModel)]="targetMult">
+                @for (m of multiplicities; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+            </label>
+          </div>
+        }
+        <div class="modal-actions">
+          <button class="ghost" (click)="cancelRelationship()">Cancelar</button>
+          <button class="primary" (click)="confirmRelationship()">Crear relación</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

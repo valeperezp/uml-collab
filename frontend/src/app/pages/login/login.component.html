@@ -1,0 +1,35 @@
+<div class="login-screen">
+  <form class="login-card" (ngSubmit)="submit()">
+    <h1>UML Collab</h1>
+    <p class="subtitle">Diseño colaborativo de bases de datos, asistido por IA</p>
+
+    @if (mode() === 'register') {
+      <label>
+        Nombre para mostrar
+        <input type="text" name="displayName" [(ngModel)]="displayName" required />
+      </label>
+    }
+
+    <label>
+      Usuario
+      <input type="text" name="username" [(ngModel)]="username" required autocomplete="username" />
+    </label>
+
+    <label>
+      Contraseña
+      <input type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" />
+    </label>
+
+    @if (error()) {
+      <div class="error">{{ error() }}</div>
+    }
+
+    <button type="submit" [disabled]="loading()">
+      {{ mode() === 'login' ? 'Entrar' : 'Crear cuenta' }}
+    </button>
+
+    <button type="button" class="link" (click)="toggleMode()">
+      {{ mode() === 'login' ? '¿No tenés cuenta? Registrate' : '¿Ya tenés cuenta? Entrá' }}
+    </button>
+  </form>
+</div>
