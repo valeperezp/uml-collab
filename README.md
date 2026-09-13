@@ -10,11 +10,33 @@ Este es el software que el equipo usa para **diseñar** el modelo de datos de cu
 backend/     Spring Boot 3.3 (Java 21) + PostgreSQL — la herramienta en sí
 frontend/    Angular 18 (standalone components) — el editor colaborativo
 docs/        Notas de arquitectura
+docker-compose.yml   Levanta los tres servicios (db, backend, frontend) juntos
 ```
 
 ## Cómo correrlo
 
-### 1. Base de datos
+### Opción A: todo junto con Docker (recomendado)
+
+```bash
+docker compose up --build
+```
+
+Levanta Postgres, backend y frontend en un solo comando. Abrí **http://localhost:4210**. El frontend se sirve con nginx, que hace de proxy hacia el backend (`/api`, `/ws`), así que no hay que tocar puertos ni CORS.
+
+Para habilitar el agente de IA, definí la variable antes de levantar todo:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+docker compose up --build
+```
+
+`JWT_SECRET` y `ANTHROPIC_MODEL` también son configurables como variables de entorno (ver `docker-compose.yml`); si no las definís, usan un default razonable para desarrollo.
+
+Para parar todo: `docker compose down` (agregá `-v` si además querés borrar los datos de Postgres).
+
+### Opción B: cada pieza por separado (para desarrollo activo, con hot-reload)
+
+#### 1. Base de datos
 
 ```bash
 docker run --name uml-collab-db -e POSTGRES_USER=uml_collab -e POSTGRES_PASSWORD=uml_collab \
@@ -23,7 +45,7 @@ docker run --name uml-collab-db -e POSTGRES_USER=uml_collab -e POSTGRES_PASSWORD
 
 > Usamos el puerto host `5442` (en vez del `5432` por defecto de Postgres) para no chocar con otros proyectos que puedan tener su propio Postgres en `5432`. Si en tu máquina el `5432` está libre, podés usarlo y pasar `DB_URL=jdbc:postgresql://localhost:5432/uml_collab` al backend.
 
-### 2. Backend
+#### 2. Backend
 
 ```bash
 cd backend
@@ -42,7 +64,7 @@ El backend escucha en `http://localhost:8080`. Variables de entorno relevantes (
 | `ANTHROPIC_MODEL` | Modelo a usar (default: un Claude reciente con soporte de tool-use y visión) |
 | `CORS_ALLOWED_ORIGINS` | Default `http://localhost:4210` |
 
-### 3. Frontend
+#### 3. Frontend
 
 ```bash
 cd frontend
@@ -65,4 +87,4 @@ Abre `http://localhost:4210` (puerto fijado en `angular.json` para no chocar con
 - El generador de backend deja `TODO`s en el `Service.create/update` donde haría falta resolver un ID de relación al objeto real (evita adivinar cómo querés resolver esas referencias).
 - La integración XMI cubre un subconjunto razonable, no el 100% de lo que Enterprise Architect puede exportar; si importás un XMI muy complejo de EA, revisá el resultado.
 - No se armó la app móvil todavía (a propósito, según lo conversado): el generador de backend es el entregable de esta herramienta.
-- El código no se compiló en este entorno (sandbox sin acceso a Maven Central / npm registry) — se revisó a mano con mucho cuidado, pero corré `mvn compile` y `npm install && npm run build` apenas lo bajes, antes de confiarte del todo.
+- Si creás dos clases con el mismo nombre casi al mismo tiempo (dos clics muy rápidos, o dos usuarios a la vez), la validación de nombre único puede no alcanzar a detectarlo — y ahí "Generar backend" falla porque genera dos archivos con el mismo nombre. Se soluciona renombrando la clase duplicada. Falta una constraint `UNIQUE` a nivel de base de datos para cerrar esto del todo.

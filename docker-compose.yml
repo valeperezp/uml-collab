@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: uml_collab
+      POSTGRES_PASSWORD: uml_collab
+      POSTGRES_DB: uml_collab
+    ports:
+      - "5442:5432"
+    volumes:
+      - uml_collab_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uml_collab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/uml_collab
+      DB_USERNAME: uml_collab
+      DB_PASSWORD: uml_collab
+      JWT_SECRET: ${JWT_SECRET:-cambia-esto-en-serio}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5-20250929}
+      CORS_ALLOWED_ORIGINS: http://localhost:4210
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "4210:80"
+
+volumes:
+  uml_collab_db_data:

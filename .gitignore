@@ -13,6 +13,7 @@ npm-debug.log*
 # IDE / OS
 .idea/
 .vscode/
+.claude/
 *.iml
 .DS_Store
 Thumbs.db

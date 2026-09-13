@@ -45,7 +45,7 @@ public class UmlAttribute {
     @Builder.Default
     private boolean nullable = true;
 
-    @Column(nullable = false)
+    @Column(name = "is_unique", nullable = false)
     @Builder.Default
     private boolean unique = false;
 
