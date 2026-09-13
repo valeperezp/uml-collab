@@ -30,11 +30,18 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
   frontend:
     build: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "4210:80"
 
