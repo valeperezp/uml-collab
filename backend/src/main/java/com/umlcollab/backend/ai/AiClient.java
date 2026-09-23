@@ -57,7 +57,6 @@ public class AiClient {
 
         this.systemAiConfigRepository = systemAiConfigRepository;
 
-        String resolvedKey = firstNonBlank(openaiKey, aiApiKey, geminiKey, deepseekKey, anthropicKey);
         String resolvedBaseUrl = firstNonBlank(openaiBaseUrl, aiBaseUrl, deepseekBaseUrl, geminiBaseUrl);
         String resolvedModel = firstNonBlank(openaiModel, aiModel, geminiModel, deepseekModel, anthropicModel, "gpt-4o-mini");
 
@@ -66,14 +65,30 @@ public class AiClient {
             provider = aiProvider.trim().toLowerCase();
         } else if ((openaiKey != null && !openaiKey.isBlank()) || (openaiBaseUrl != null && !openaiBaseUrl.isBlank()) || (aiApiKey != null && !aiApiKey.isBlank())) {
             provider = "openai";
-        } else if ((geminiKey != null && geminiKey.startsWith("AIzaSy")) || (resolvedKey != null && resolvedKey.startsWith("AIzaSy"))) {
+        } else if (geminiKey != null && geminiKey.startsWith("AIzaSy")) {
             provider = "gemini";
-        } else if ((anthropicKey != null && !anthropicKey.isBlank()) || (resolvedKey != null && resolvedKey.startsWith("sk-ant-"))) {
+        } else if (anthropicKey != null && (anthropicKey.startsWith("sk-ant-") || !anthropicKey.isBlank())) {
             provider = "anthropic";
-        } else if (resolvedBaseUrl != null && (resolvedBaseUrl.contains("11434") || resolvedBaseUrl.contains("ollama") || resolvedBaseUrl.contains("localhost"))) {
+        } else if (deepseekKey != null && !deepseekKey.isBlank()) {
+            provider = "deepseek";
+        } else if (resolvedBaseUrl != null && (resolvedBaseUrl.contains("11434") || resolvedBaseUrl.contains("ollama") || resolvedBaseUrl.contains("localhost") || resolvedBaseUrl.contains("host.docker.internal"))) {
             provider = "custom";
         } else {
             provider = "custom";
+        }
+
+        String resolvedKey = "";
+        if ("gemini".equals(provider)) {
+            resolvedKey = geminiKey != null && geminiKey.startsWith("AIzaSy") ? geminiKey : "";
+        } else if ("anthropic".equals(provider)) {
+            resolvedKey = anthropicKey != null ? anthropicKey.trim() : "";
+        } else if ("deepseek".equals(provider)) {
+            resolvedKey = firstNonBlank(deepseekKey, openaiKey, aiApiKey);
+        } else if ("openai".equals(provider)) {
+            resolvedKey = firstNonBlank(openaiKey, aiApiKey);
+        } else {
+            // custom / local provider: solo toma claves openai o aiApiKey si no son de gemini/anthropic
+            resolvedKey = firstNonBlank(openaiKey, aiApiKey);
         }
 
         this.defaultConfig = AiConfig.builder()
