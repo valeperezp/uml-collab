@@ -20,4 +20,8 @@ public class UserAiConfigDto {
     private String effectiveProvider;
     private String effectiveModel;
     private boolean systemDefaultAvailable;
+    private String systemProvider;
+    private String systemModel;
+    private String systemBaseUrl;
+    private boolean systemConfigured;
 }

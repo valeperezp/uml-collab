@@ -54,8 +54,8 @@
             <input type="checkbox" [(ngModel)]="customEnabled" />
             <span class="toggle-slider"></span>
             <span class="toggle-label-text">
-              <strong>Usar mis credenciales personales</strong>
-              <small>Cuando esté activado, las peticiones usarán tu propia API Key y modelo.</small>
+              <strong>Usar credenciales personales exclusivas</strong>
+              <small>Si está desactivado, usarás la configuración global del servidor.</small>
             </span>
           </label>
           @if (!customEnabled && currentConfig?.systemDefaultAvailable) {
@@ -65,9 +65,21 @@
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
-              <span>Usando valores por defecto del servidor ({{ currentConfig?.effectiveProvider | uppercase }})</span>
+              <span>Global activo: <strong>{{ (currentConfig?.systemProvider || currentConfig?.effectiveProvider) | uppercase }}</strong> ({{ currentConfig?.systemModel || currentConfig?.effectiveModel }})</span>
             </div>
           }
+        </div>
+
+        <!-- Global System Default Persistence Option -->
+        <div class="system-default-option">
+          <label class="toggle-control">
+            <input type="checkbox" [(ngModel)]="saveAsSystemDefault" />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label-text">
+              <strong>Guardar como configuración global del sistema</strong>
+              <small>Guarda esta configuración en la base de datos para que todos los usuarios (y los nuevos que se registren) la usen automáticamente.</small>
+            </span>
+          </label>
         </div>
 
         <!-- Provider Selection Grid -->

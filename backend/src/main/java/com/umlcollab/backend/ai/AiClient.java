@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.umlcollab.backend.dto.ai.AiTestResponse;
+import com.umlcollab.backend.model.SystemAiConfig;
 import com.umlcollab.backend.model.User;
+import com.umlcollab.backend.repository.SystemAiConfigRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +24,7 @@ import java.util.List;
 /**
  * Cliente para proveedores de IA: Google Gemini, DeepSeek, Anthropic Claude, OpenAI, Groq, OpenRouter y Locales.
  * Soporta entrada multimodal (texto, comandos de voz y fotos de diagramas),
- * function calling estructurado y configuración dinámica por usuario.
+ * function calling estructurado y configuración dinámica por usuario o sistema.
  */
 @Component
 public class AiClient {
@@ -32,9 +34,11 @@ public class AiClient {
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final SystemAiConfigRepository systemAiConfigRepository;
     private final AiConfig defaultConfig;
 
-    public AiClient(@Value("${OPENAI_API_KEY:}") String openaiKey,
+    public AiClient(SystemAiConfigRepository systemAiConfigRepository,
+                    @Value("${OPENAI_API_KEY:}") String openaiKey,
                     @Value("${OPENAI_BASE_URL:}") String openaiBaseUrl,
                     @Value("${OPENAI_MODEL:}") String openaiModel,
                     @Value("${AI_API_KEY:}") String aiApiKey,
@@ -51,6 +55,8 @@ public class AiClient {
                     @Value("${ANTHROPIC_MODEL:}") String anthropicModel,
                     @Value("${AI_ENABLED:true}") boolean enabled) {
 
+        this.systemAiConfigRepository = systemAiConfigRepository;
+
         String resolvedKey = firstNonBlank(openaiKey, aiApiKey, geminiKey, deepseekKey, anthropicKey);
         String resolvedBaseUrl = firstNonBlank(openaiBaseUrl, aiBaseUrl, deepseekBaseUrl, geminiBaseUrl);
         String resolvedModel = firstNonBlank(openaiModel, aiModel, geminiModel, deepseekModel, anthropicModel, "gpt-4o-mini");
@@ -60,12 +66,14 @@ public class AiClient {
             provider = aiProvider.trim().toLowerCase();
         } else if ((openaiKey != null && !openaiKey.isBlank()) || (openaiBaseUrl != null && !openaiBaseUrl.isBlank()) || (aiApiKey != null && !aiApiKey.isBlank())) {
             provider = "openai";
-        } else if ((geminiKey != null && !geminiKey.isBlank()) || (resolvedKey != null && resolvedKey.startsWith("AIzaSy"))) {
+        } else if ((geminiKey != null && geminiKey.startsWith("AIzaSy")) || (resolvedKey != null && resolvedKey.startsWith("AIzaSy"))) {
             provider = "gemini";
         } else if ((anthropicKey != null && !anthropicKey.isBlank()) || (resolvedKey != null && resolvedKey.startsWith("sk-ant-"))) {
             provider = "anthropic";
+        } else if (resolvedBaseUrl != null && (resolvedBaseUrl.contains("11434") || resolvedBaseUrl.contains("ollama") || resolvedBaseUrl.contains("localhost"))) {
+            provider = "custom";
         } else {
-            provider = "gemini";
+            provider = "custom";
         }
 
         this.defaultConfig = AiConfig.builder()
@@ -76,11 +84,37 @@ public class AiClient {
                 .enabled(enabled)
                 .build();
 
-        log.info("Proveedor de IA del sistema: {} | Modelo: {} | BaseURL: {} (configurado: {})",
+        log.info("Proveedor de IA del sistema (fallback env): {} | Modelo: {} | BaseURL: {} (configurado: {})",
                 this.defaultConfig.getProvider(), this.defaultConfig.getModel(), this.defaultConfig.getBaseUrl(), this.defaultConfig.isConfigured());
     }
 
     public AiConfig getDefaultConfig() {
+        return getEffectiveSystemConfig();
+    }
+
+    public AiConfig getEffectiveSystemConfig() {
+        if (systemAiConfigRepository != null) {
+            try {
+                var opt = systemAiConfigRepository.findTopByOrderByUpdatedAtDesc();
+                if (opt.isPresent()) {
+                    SystemAiConfig sys = opt.get();
+                    if (sys.isEnabled()) {
+                        AiConfig cfg = AiConfig.builder()
+                                .provider(sys.getProvider() != null && !sys.getProvider().isBlank() ? sys.getProvider().trim().toLowerCase() : "custom")
+                                .apiKey(sys.getApiKey())
+                                .model(sys.getModel())
+                                .baseUrl(sys.getBaseUrl())
+                                .enabled(sys.isEnabled())
+                                .build();
+                        if (cfg.isConfigured()) {
+                            return cfg;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo leer la configuración de IA del sistema de la BD: {}", e.getMessage());
+            }
+        }
         return this.defaultConfig;
     }
 
@@ -110,7 +144,7 @@ public class AiClient {
                         .build();
             }
         }
-        return this.defaultConfig;
+        return getEffectiveSystemConfig();
     }
 
     private static String firstNonBlank(String... values) {
@@ -124,7 +158,7 @@ public class AiClient {
     }
 
     public boolean isConfigured() {
-        return defaultConfig.isConfigured();
+        return getEffectiveSystemConfig().isConfigured();
     }
 
     public JsonNode callTool(String systemPrompt, ArrayNode userContent, String toolJson, String toolName) {
@@ -280,9 +314,7 @@ public class AiClient {
                     primaryModel,
                     "gemini-2.5-flash",
                     "gemini-2.0-flash",
-                    "gemini-1.5-flash",
-                    "gemini-2.5-pro",
-                    "gemini-1.5-pro"
+                    "gemini-1.5-flash"
             );
 
             HttpResponse<String> response = null;
@@ -319,7 +351,7 @@ public class AiClient {
             }
 
             if (response == null || response.statusCode() >= 400 || responseBody == null) {
-                throw new AiUnavailableException("La API de Gemini respondió con error (" + lastStatusCode + "): " + lastErrorMessage);
+                throw new AiUnavailableException("La API de Google Gemini respondió con error (" + lastStatusCode + "): " + lastErrorMessage + ". Verifica tu API Key o configura Ollama en la Configuración de IA.");
             }
 
             JsonNode candidates = responseBody.path("candidates");
@@ -447,26 +479,55 @@ public class AiClient {
             body.set("tool_choice", toolChoice);
 
             String url = resolveOpenAiUrl(cfg.getBaseUrl(), cfg.getProvider());
+            String bodyJson = objectMapper.writeValueAsString(body);
 
-            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(60))
-                    .header("Content-Type", "application/json");
-
-            if (cfg.getApiKey() != null && !cfg.getApiKey().isBlank()) {
-                reqBuilder.header("Authorization", "Bearer " + cfg.getApiKey().trim());
+            HttpResponse<String> response = null;
+            try {
+                HttpRequest request = buildOpenAiRequest(url, bodyJson, cfg.getApiKey());
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (Exception ex) {
+                // Si falló localhost / 127.0.0.1 dentro de un contenedor Docker, reintentar con host.docker.internal
+                if (url.contains("localhost") || url.contains("127.0.0.1")) {
+                    String fallbackUrl = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal");
+                    log.info("No se pudo conectar a {} ({}). Intentando fallback con {}...", url, getExceptionDetail(ex), fallbackUrl);
+                    try {
+                        HttpRequest retryReq = buildOpenAiRequest(fallbackUrl, bodyJson, cfg.getApiKey());
+                        response = httpClient.send(retryReq, HttpResponse.BodyHandlers.ofString());
+                        url = fallbackUrl;
+                    } catch (Exception ex2) {
+                        log.warn("Fallo fallback con {}: {}", fallbackUrl, getExceptionDetail(ex2));
+                        throw formatOpenAiConnectionException(url, ex);
+                    }
+                } else if (url.contains("host.docker.internal")) {
+                    String fallbackUrl = url.replace("host.docker.internal", "localhost");
+                    try {
+                        HttpRequest retryReq = buildOpenAiRequest(fallbackUrl, bodyJson, cfg.getApiKey());
+                        response = httpClient.send(retryReq, HttpResponse.BodyHandlers.ofString());
+                        url = fallbackUrl;
+                    } catch (Exception ex2) {
+                        throw formatOpenAiConnectionException(url, ex);
+                    }
+                } else {
+                    throw formatOpenAiConnectionException(url, ex);
+                }
             }
 
-            HttpRequest request = reqBuilder
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode responseBody = objectMapper.readTree(response.body());
-
             if (response.statusCode() >= 400) {
-                String errorMsg = responseBody.path("error").path("message").asText(response.body());
+                String errorMsg = "";
+                try {
+                    JsonNode errNode = objectMapper.readTree(response.body());
+                    errorMsg = errNode.path("error").path("message").asText(response.body());
+                } catch (Exception parseEx) {
+                    errorMsg = response.body();
+                }
                 throw new AiUnavailableException("La API (" + url + ") respondió con error (" + response.statusCode() + "): " + errorMsg);
+            }
+
+            JsonNode responseBody;
+            try {
+                responseBody = objectMapper.readTree(response.body());
+            } catch (Exception ex) {
+                throw new AiUnavailableException("La respuesta del modelo de IA no es un JSON válido: " + response.body());
             }
 
             JsonNode choices = responseBody.path("choices");
@@ -514,8 +575,41 @@ public class AiClient {
             throw e;
         } catch (Exception e) {
             log.error("Error llamando a la API OpenAI compatible", e);
-            throw new AiUnavailableException("No se pudo contactar al proveedor OpenAI compatible: " + e.getMessage());
+            throw new AiUnavailableException("No se pudo contactar al proveedor OpenAI compatible: " + getExceptionDetail(e));
         }
+    }
+
+    private HttpRequest buildOpenAiRequest(String url, String bodyJson, String apiKey) {
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(90))
+                .header("Content-Type", "application/json");
+
+        if (apiKey != null && !apiKey.isBlank()) {
+            reqBuilder.header("Authorization", "Bearer " + apiKey.trim());
+        }
+
+        return reqBuilder.POST(HttpRequest.BodyPublishers.ofString(bodyJson)).build();
+    }
+
+    private String getExceptionDetail(Throwable t) {
+        if (t == null) return "Error desconocido";
+        if (t.getMessage() != null && !t.getMessage().isBlank()) {
+            return t.getMessage();
+        }
+        if (t.getCause() != null && t.getCause().getMessage() != null && !t.getCause().getMessage().isBlank()) {
+            return t.getCause().getMessage();
+        }
+        return t.getClass().getSimpleName();
+    }
+
+    private AiUnavailableException formatOpenAiConnectionException(String url, Exception e) {
+        String detail = getExceptionDetail(e);
+        if (detail.contains("Connection refused") || detail.contains("ConnectException") || detail.contains("ConnectTimeout")) {
+            return new AiUnavailableException("No se pudo conectar con el endpoint de IA (" + url + "). "
+                    + "Verifica que el servicio (ej. Ollama) esté encendido. Si ejecutas en Docker, usa 'http://host.docker.internal:11434/v1'.");
+        }
+        return new AiUnavailableException("No se pudo contactar al proveedor de IA en " + url + ": " + detail);
     }
 
     private String resolveOpenAiUrl(String rawBaseUrl, String provider) {
@@ -527,7 +621,10 @@ public class AiClient {
             if (clean.endsWith("/chat/completions")) {
                 return clean;
             }
-            if (clean.equalsIgnoreCase("https://api.openai.com") || clean.matches("https?://(localhost|127\\.0\\.0\\.1|host\\.docker\\.internal)(:\\d+)?")) {
+            if (clean.endsWith("/v1")) {
+                return clean + "/chat/completions";
+            }
+            if (clean.equalsIgnoreCase("https://api.openai.com") || clean.matches("https?://[^/]+(:\\d+)?")) {
                 return clean + "/v1/chat/completions";
             }
             return clean + "/chat/completions";

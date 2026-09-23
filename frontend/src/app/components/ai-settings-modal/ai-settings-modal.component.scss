@@ -261,6 +261,22 @@
   padding: 0.3rem 0.65rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--primary-200);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.system-default-option {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px dashed var(--slate-300);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1.1rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+
+  &:hover {
+    border-color: var(--primary-400);
+    background: #faf5ff;
+  }
 }
 
 /* Sections */

@@ -16,4 +16,5 @@ public class UserAiConfigRequest {
     private String baseUrl;
     private Boolean customEnabled;
     private Boolean clearApiKey;
+    private Boolean saveAsSystemDefault;
 }

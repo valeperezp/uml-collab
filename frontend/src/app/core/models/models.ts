@@ -112,6 +112,10 @@ export interface UserAiConfig {
   effectiveProvider: string;
   effectiveModel: string;
   systemDefaultAvailable: boolean;
+  systemProvider?: string;
+  systemModel?: string;
+  systemBaseUrl?: string;
+  systemConfigured?: boolean;
 }
 
 export interface UserAiConfigUpdate {
@@ -121,6 +125,7 @@ export interface UserAiConfigUpdate {
   baseUrl?: string;
   customEnabled?: boolean;
   clearApiKey?: boolean;
+  saveAsSystemDefault?: boolean;
 }
 
 export interface AiTestRequest {

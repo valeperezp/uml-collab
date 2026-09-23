@@ -21,9 +21,29 @@ export interface ProviderOption {
 
 export const AI_PROVIDERS: ProviderOption[] = [
   {
+    id: 'custom',
+    name: 'Servidor Local / Ollama',
+    badge: 'Local / Ollama',
+    icon: '💻',
+    color: '#64748b',
+    description: 'Ollama, LMStudio, vLLM, LocalAI o cualquier endpoint compatible con OpenAI.',
+    apiKeyHelpUrl: '',
+    apiKeyPlaceholder: 'Opcional para Ollama / local',
+    defaultModel: 'gemma4:31b',
+    defaultBaseUrl: 'http://localhost:11434/v1',
+    supportsVision: false,
+    models: [
+      { id: 'gemma4:31b', label: 'Gemma 4:31B (Ollama)', tag: 'Default' },
+      { id: 'llama3.2', label: 'Llama 3.2 (Local)' },
+      { id: 'qwen2.5-coder', label: 'Qwen 2.5 Coder' },
+      { id: 'mistral', label: 'Mistral 7B' },
+      { id: 'custom', label: 'Otro modelo personalizado...' },
+    ],
+  },
+  {
     id: 'gemini',
     name: 'Google Gemini',
-    badge: 'Recomendado',
+    badge: 'Nube Google',
     icon: '✨',
     color: '#3b82f6',
     description: 'Excelente precisión, soporte nativo de imágenes/pizarras y capa gratuita generosa.',
@@ -35,8 +55,7 @@ export const AI_PROVIDERS: ProviderOption[] = [
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Más rápido y recomendado)', tag: 'Default' },
       { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Máximo razonamiento)', tag: 'Pro' },
       { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Alta velocidad)' },
-      { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Clásico)' },
-      { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+      { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
     ],
   },
   {
@@ -125,25 +144,6 @@ export const AI_PROVIDERS: ProviderOption[] = [
       { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Meta: Llama 3.3 70B' },
     ],
   },
-  {
-    id: 'custom',
-    name: 'Servidor Local / Custom',
-    badge: 'Local / Proxy',
-    icon: '💻',
-    color: '#64748b',
-    description: 'Ollama, LMStudio, vLLM, LocalAI o cualquier endpoint compatible con OpenAI.',
-    apiKeyHelpUrl: '',
-    apiKeyPlaceholder: 'Opcional si es local (ej. ollama)',
-    defaultModel: 'llama3.2',
-    defaultBaseUrl: 'http://localhost:11434/v1',
-    supportsVision: false,
-    models: [
-      { id: 'llama3.2', label: 'Llama 3.2 (Local)' },
-      { id: 'mistral', label: 'Mistral 7B' },
-      { id: 'qwen2.5-coder', label: 'Qwen 2.5 Coder' },
-      { id: 'custom', label: 'Otro modelo personalizado...' },
-    ],
-  },
 ];
 
 @Component({
@@ -161,12 +161,13 @@ export class AiSettingsModalComponent implements OnInit {
   providers = AI_PROVIDERS;
 
   // Estado del formulario
-  selectedProviderId = 'gemini';
+  selectedProviderId = 'custom';
   apiKey = '';
   showApiKey = false;
-  selectedModel = 'gemini-2.5-flash';
-  baseUrl = '';
-  customEnabled = true;
+  selectedModel = 'gemma4:31b';
+  baseUrl = 'http://localhost:11434/v1';
+  customEnabled = false;
+  saveAsSystemDefault = true;
 
   // Estado del servidor y feedback
   loading = signal(false);
@@ -200,14 +201,19 @@ export class AiSettingsModalComponent implements OnInit {
         this.currentConfig = cfg;
         this.customEnabled = cfg.customEnabled;
 
-        if (cfg.provider && this.providers.some((p) => p.id === cfg.provider)) {
-          this.selectedProviderId = cfg.provider;
+        const effectiveProvider = cfg.customEnabled ? cfg.provider : (cfg.systemProvider || cfg.provider || 'custom');
+        if (effectiveProvider && this.providers.some((p) => p.id === effectiveProvider)) {
+          this.selectedProviderId = effectiveProvider;
         } else {
-          this.selectedProviderId = 'gemini';
+          this.selectedProviderId = 'custom';
         }
 
-        this.baseUrl = cfg.baseUrl || '';
-        this.selectedModel = cfg.model || this.currentProvider.defaultModel;
+        const effectiveBaseUrl = cfg.customEnabled ? (cfg.baseUrl || '') : (cfg.systemBaseUrl || cfg.baseUrl || '');
+        this.baseUrl = effectiveBaseUrl || this.currentProvider.defaultBaseUrl || '';
+
+        const effectiveModel = cfg.customEnabled ? (cfg.model || '') : (cfg.systemModel || cfg.model || '');
+        this.selectedModel = effectiveModel || this.currentProvider.defaultModel;
+
         this.apiKey = '';
         this.loading.set(false);
       },
@@ -279,6 +285,7 @@ export class AiSettingsModalComponent implements OnInit {
       model: modelToSave,
       baseUrl: this.baseUrl.trim() || '',
       customEnabled: this.customEnabled,
+      saveAsSystemDefault: this.saveAsSystemDefault,
     };
 
     this.api.updateAiConfig(payload).subscribe({
