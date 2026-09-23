@@ -36,17 +36,9 @@ public class JavaSourceRenderer {
         for (String imp : imports) sb.append("import ").append(imp).append(";\n");
         sb.append("\n");
         sb.append("@Entity\n");
-        if (isRoot) {
-            sb.append("@Table(name = \"").append(plan.tableName).append("\")\n");
-        }
+        sb.append("@Table(name = \"").append(plan.tableName).append("\")\n");
         if (isRoot && isParent) {
-            sb.append("@Inheritance(strategy = InheritanceType.SINGLE_TABLE)\n");
-            sb.append("@DiscriminatorColumn(name = \"tipo\")\n");
-        }
-        if (isParent || !isRoot) {
-            if (!plan.isAbstract) {
-                sb.append("@DiscriminatorValue(\"").append(plan.className).append("\")\n");
-            }
+            sb.append("@Inheritance(strategy = InheritanceType.JOINED)\n");
         }
         sb.append("@Getter\n@Setter\n@NoArgsConstructor\n@AllArgsConstructor\n");
         sb.append("public ").append(plan.isAbstract ? "abstract " : "").append("class ").append(plan.className);
@@ -55,16 +47,18 @@ public class JavaSourceRenderer {
 
         for (FieldPlan f : plan.fields) {
             if (f.isId) {
-                sb.append("    @Id\n");
-                if (f.generated) {
-                    if ("UUID".equals(f.javaType)) {
-                        sb.append("    @GeneratedValue(strategy = GenerationType.UUID)\n");
-                    } else {
-                        sb.append("    @GeneratedValue(strategy = GenerationType.IDENTITY)\n");
+                if (isRoot) {
+                    sb.append("    @Id\n");
+                    if (f.generated || "Integer".equalsIgnoreCase(f.javaType) || "Long".equalsIgnoreCase(f.javaType) || "UUID".equalsIgnoreCase(f.javaType)) {
+                        if ("UUID".equalsIgnoreCase(f.javaType)) {
+                            sb.append("    @GeneratedValue(strategy = GenerationType.UUID)\n");
+                        } else {
+                            sb.append("    @GeneratedValue(strategy = GenerationType.IDENTITY)\n");
+                        }
                     }
+                    sb.append("    @Column(name = \"").append(NameUtils.snakeCase(f.name)).append("\")\n");
+                    sb.append("    private ").append(f.javaType).append(" ").append(f.name).append(";\n\n");
                 }
-                sb.append("    @Column(name = \"").append(NameUtils.snakeCase(f.name)).append("\")\n");
-                sb.append("    private ").append(f.javaType).append(" ").append(f.name).append(";\n\n");
             } else {
                 sb.append("    @Column(name = \"").append(NameUtils.snakeCase(f.name)).append("\"")
                         .append(", nullable = ").append(f.nullable)
@@ -121,7 +115,7 @@ public class JavaSourceRenderer {
         return sb.toString();
     }
 
-    public String renderDto(ClassPlan plan, String basePackage) {
+    public String renderDto(ClassPlan plan, String basePackage, List<ClassPlan> allPlans) {
         TreeSet<String> imports = new TreeSet<>();
         imports.add("lombok.Getter");
         imports.add("lombok.Setter");
@@ -133,7 +127,9 @@ public class JavaSourceRenderer {
             imports.add("java.util.List");
             imports.add("java.util.ArrayList");
         }
-        if (!plan.relations.isEmpty()) imports.add("java.util.UUID");
+        for (RelationPlan r : plan.relations) {
+            if (r.targetIdImport != null) imports.add(r.targetIdImport);
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("package ").append(basePackage).append(".dto;\n\n");
@@ -141,16 +137,21 @@ public class JavaSourceRenderer {
         sb.append("\n");
         sb.append("/** DTO plano de ").append(plan.className).append(": expone solo los ids de las relaciones, nunca la entidad completa (evita ciclos de serializacion). */\n");
         sb.append("@Getter\n@Setter\n@NoArgsConstructor\n@AllArgsConstructor\n");
-        sb.append("public class ").append(plan.className).append("Dto {\n\n");
+        sb.append("public class ").append(plan.className).append("Dto");
+        if (plan.superClassName != null) {
+            sb.append(" extends ").append(plan.superClassName).append("Dto");
+        }
+        sb.append(" {\n\n");
 
         for (FieldPlan f : plan.fields) {
             sb.append("    private ").append(f.javaType).append(" ").append(f.name).append(";\n");
         }
         for (RelationPlan r : plan.relations) {
+            String type = r.targetIdType != null ? r.targetIdType : "UUID";
             if (r.collection) {
-                sb.append("    private List<UUID> ").append(r.fieldName).append("Ids = new ArrayList<>();\n");
+                sb.append("    private List<").append(type).append("> ").append(r.fieldName).append("Ids = new ArrayList<>();\n");
             } else {
-                sb.append("    private UUID ").append(r.fieldName).append("Id;\n");
+                sb.append("    private ").append(type).append(" ").append(r.fieldName).append("Id;\n");
             }
         }
         sb.append("}\n");
@@ -158,52 +159,86 @@ public class JavaSourceRenderer {
     }
 
     public String renderRepository(ClassPlan plan, String basePackage) {
-        return """
-                package %s.repository;
-
-                import %s.model.%s;
-                import org.springframework.data.jpa.repository.JpaRepository;
-
-                public interface %sRepository extends JpaRepository<%s, %s> {
-                }
-                """.formatted(basePackage, basePackage, plan.className, plan.className, plan.className, plan.idField.javaType);
+        StringBuilder sb = new StringBuilder();
+        sb.append("package ").append(basePackage).append(".repository;\n\n");
+        sb.append("import ").append(basePackage).append(".model.").append(plan.className).append(";\n");
+        sb.append("import org.springframework.data.jpa.repository.JpaRepository;\n");
+        if (plan.idField != null && plan.idField.javaImport != null) {
+            sb.append("import ").append(plan.idField.javaImport).append(";\n");
+        }
+        sb.append("\n");
+        sb.append("public interface ").append(plan.className).append("Repository extends JpaRepository<")
+                .append(plan.className).append(", ").append(plan.idField.javaType).append("> {\n");
+        sb.append("}\n");
+        return sb.toString();
     }
 
-    public String renderService(ClassPlan plan, String basePackage) {
+    public String renderService(ClassPlan plan, String basePackage, List<ClassPlan> allPlans) {
+        List<FieldPlan> allFields = new ArrayList<>();
+        ClassPlan curr = plan;
+        while (curr != null) {
+            allFields.addAll(curr.fields);
+            String superName = curr.superClassName;
+            curr = superName != null ? allPlans.stream().filter(p -> p.className.equals(superName)).findFirst().orElse(null) : null;
+        }
+
         StringBuilder mapToEntity = new StringBuilder();
         StringBuilder mapToDto = new StringBuilder();
-        for (FieldPlan f : plan.fields) {
+        for (FieldPlan f : allFields) {
             String cap = capitalize(f.name);
-            mapToEntity.append("        entity.set").append(cap).append("(dto.get").append(cap).append("());\n");
+            if (!f.isId || !f.generated) {
+                mapToEntity.append("        if (dto.get").append(cap).append("() != null) entity.set").append(cap).append("(dto.get").append(cap).append("());\n");
+            }
             mapToDto.append("        dto.set").append(cap).append("(entity.get").append(cap).append("());\n");
         }
+        List<RelationPlan> allRelations = new ArrayList<>();
+        ClassPlan currRel = plan;
+        while (currRel != null) {
+            allRelations.addAll(currRel.relations);
+            String superName = currRel.superClassName;
+            currRel = superName != null ? allPlans.stream().filter(p -> p.className.equals(superName)).findFirst().orElse(null) : null;
+        }
+
         StringBuilder relationHandling = new StringBuilder();
-        for (RelationPlan r : plan.relations) {
+        for (RelationPlan r : allRelations) {
             String cap = capitalize(r.fieldName);
+            String getter = r.targetIdGetter != null ? r.targetIdGetter : "getId";
             if (!r.collection && r.owningSide) {
                 relationHandling.append("        // TODO: resolver y setear ").append(r.fieldName)
                         .append(" a partir de dto.get").append(cap).append("Id() usando su repositorio si corresponde\n");
             }
             if (!r.collection) {
                 mapToDto.append("        if (entity.get").append(cap).append("() != null) dto.set").append(cap)
-                        .append("Id(entity.get").append(cap).append("().getId());\n");
+                        .append("Id(entity.get").append(cap).append("().").append(getter).append("());\n");
             } else {
-                mapToDto.append("        entity.get").append(cap).append("().forEach(x -> dto.get").append(cap)
-                        .append("Ids().add(x.getId()));\n");
+                mapToDto.append("        if (entity.get").append(cap).append("() != null) entity.get").append(cap)
+                        .append("().forEach(x -> dto.get").append(cap).append("Ids().add(x.").append(getter).append("()));\n");
             }
         }
 
         String cn = plan.className;
         String idType = plan.idField.javaType;
+        TreeSet<String> imports = new TreeSet<>();
+        imports.add(basePackage + ".dto." + cn + "Dto");
+        imports.add(basePackage + ".model." + cn);
+        imports.add(basePackage + ".repository." + cn + "Repository");
+        imports.add("org.springframework.stereotype.Service");
+        imports.add("org.springframework.transaction.annotation.Transactional");
+        imports.add("java.util.List");
+        imports.add("java.util.NoSuchElementException");
+        if (plan.idField != null && plan.idField.javaImport != null) {
+            imports.add(plan.idField.javaImport);
+        }
+        for (RelationPlan r : allRelations) {
+            if (r.targetIdImport != null) {
+                imports.add(r.targetIdImport);
+            }
+        }
+
         StringBuilder out = new StringBuilder();
         out.append("package ").append(basePackage).append(".service;\n\n");
-        out.append("import ").append(basePackage).append(".dto.").append(cn).append("Dto;\n");
-        out.append("import ").append(basePackage).append(".model.").append(cn).append(";\n");
-        out.append("import ").append(basePackage).append(".repository.").append(cn).append("Repository;\n");
-        out.append("import org.springframework.stereotype.Service;\n");
-        out.append("import org.springframework.transaction.annotation.Transactional;\n\n");
-        out.append("import java.util.List;\n");
-        out.append("import java.util.NoSuchElementException;\n\n");
+        for (String imp : imports) out.append("import ").append(imp).append(";\n");
+        out.append("\n");
         out.append("@Service\n");
         out.append("public class ").append(cn).append("Service {\n\n");
         out.append("    private final ").append(cn).append("Repository repository;\n\n");
@@ -257,13 +292,20 @@ public class JavaSourceRenderer {
     public String renderController(ClassPlan plan, String basePackage) {
         String cn = plan.className;
         String idType = plan.idField.javaType;
+        TreeSet<String> imports = new TreeSet<>();
+        imports.add(basePackage + ".dto." + cn + "Dto");
+        imports.add(basePackage + ".service." + cn + "Service");
+        imports.add("org.springframework.http.ResponseEntity");
+        imports.add("org.springframework.web.bind.annotation.*");
+        imports.add("java.util.List");
+        if (plan.idField != null && plan.idField.javaImport != null) {
+            imports.add(plan.idField.javaImport);
+        }
+
         StringBuilder out = new StringBuilder();
         out.append("package ").append(basePackage).append(".controller;\n\n");
-        out.append("import ").append(basePackage).append(".dto.").append(cn).append("Dto;\n");
-        out.append("import ").append(basePackage).append(".service.").append(cn).append("Service;\n");
-        out.append("import org.springframework.http.ResponseEntity;\n");
-        out.append("import org.springframework.web.bind.annotation.*;\n\n");
-        out.append("import java.util.List;\n\n");
+        for (String imp : imports) out.append("import ").append(imp).append(";\n");
+        out.append("\n");
         out.append("@RestController\n");
         out.append("@RequestMapping(\"").append(plan.restBasePath()).append("\")\n");
         out.append("public class ").append(cn).append("Controller {\n\n");

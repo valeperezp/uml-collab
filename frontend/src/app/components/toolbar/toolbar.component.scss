@@ -2,30 +2,312 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
-  gap: 12px;
-  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 50;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.04);
 }
-.left { display: flex; align-items: center; gap: 14px; }
-.title { display: flex; flex-direction: column; }
-.code {
-  font-size: 11px;
-  color: #6b7280;
-  cursor: pointer;
-}
-.right { display: flex; gap: 8px; flex-wrap: wrap; }
 
-button {
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  background: #eef2ff;
-  color: #2563eb;
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
-button.ghost { background: none; border: 1px solid #d1d5db; color: #374151; }
-button.primary { background: #2563eb; color: #fff; }
-button:disabled { opacity: 0.6; }
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--slate-600);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-back:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-700);
+}
+
+.diagram-meta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.brand-sparkle-dot {
+  color: var(--primary-500);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.diagram-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--slate-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.join-code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  background: var(--primary-50);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--primary-700);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: fit-content;
+}
+
+.join-code-chip:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+}
+
+.join-code-chip.copied {
+  background: var(--accent-emerald-bg);
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.chip-icon {
+  font-size: 10px;
+}
+
+.chip-text {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Right Section - Action Clusters */
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.action-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pill Action Buttons */
+.btn-pill {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.btn-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Add Class - Vibrant Pastel Purple Button */
+.btn-add-class {
+  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+.btn-add-class:hover {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35);
+}
+
+.btn-add-class:active {
+  transform: translateY(0);
+}
+
+/* Danger Ghost Button (Limpiar) */
+.btn-danger-ghost {
+  background: transparent;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+}
+
+.btn-danger-ghost:hover {
+  background: var(--accent-rose-bg);
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+/* Standard Ghost Button (XMI) */
+.btn-ghost {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--slate-700);
+}
+
+.btn-ghost:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-800);
+}
+
+/* Spring Boot CodeGen Button */
+.btn-codegen {
+  background: linear-gradient(135deg, #4f46e5 0%, var(--primary-600) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.btn-codegen:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4338ca 0%, var(--primary-700) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.btn-codegen:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* AI Assistant Toggle Button */
+.btn-ai-toggle {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border: 1px solid var(--primary-200);
+  position: relative;
+}
+
+.btn-ai-toggle:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+  color: var(--primary-800);
+}
+
+.btn-ai-toggle.active {
+  background: linear-gradient(135deg, var(--primary-600) 0%, #4f46e5 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: var(--shadow-glow);
+}
+
+.sparkle-icon {
+  display: inline-flex;
+}
+
+.spinner-sm {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.title-icon-svg {
+  stroke: var(--primary-500);
+}
+
+.ai-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-rose);
+  display: inline-block;
+  animation: pulseDot 1.2s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 980px) {
+  .toolbar {
+    padding: 8px 14px;
+    gap: 10px;
+  }
+
+  .diagram-title {
+    max-width: 160px;
+  }
+
+  .btn-pill {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+  }
+
+  .toolbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar-right {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+}
+

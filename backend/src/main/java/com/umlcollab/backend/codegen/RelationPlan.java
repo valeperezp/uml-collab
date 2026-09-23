@@ -16,4 +16,7 @@ public class RelationPlan {
     public String joinColumnSelf;    // MANY_TO_MANY: columna que apunta a esta clase
     public String joinColumnOther;   // MANY_TO_MANY: columna que apunta a la otra clase
     public boolean cascadeAll;       // true para composicion (dueno del ciclo de vida)
+    public String targetIdType;      // tipo de ID del target (ej: "UUID", "Integer", "Long")
+    public String targetIdImport;    // import del ID del target si hace falta (ej: "java.util.UUID")
+    public String targetIdGetter;    // getter del ID del target (ej: "getId", "getIdPersona")
 }

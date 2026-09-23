@@ -50,7 +50,12 @@ export class ClassBoxComponent {
     this.editingName.set(true);
   }
 
+  cancelEditName(): void {
+    this.editingName.set(false);
+  }
+
   confirmName(): void {
+    if (!this.editingName()) return;
     this.editingName.set(false);
     const trimmed = this.nameDraft.trim();
     if (trimmed && trimmed !== this.classDto.name) {

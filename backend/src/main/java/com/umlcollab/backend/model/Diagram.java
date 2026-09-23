@@ -57,6 +57,10 @@ public class Diagram {
     @OneToMany(mappedBy = "diagram", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UmlRelationship> relationships = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "diagram", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DiagramCollaborator> collaborators = new ArrayList<>();
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

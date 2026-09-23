@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class DiagramMapper {
@@ -63,11 +64,18 @@ public class DiagramMapper {
     }
 
     public DiagramSummaryDto toSummaryDto(Diagram d) {
+        return toSummaryDto(d, null, null);
+    }
+
+    public DiagramSummaryDto toSummaryDto(Diagram d, UUID currentUserId, String ownerName) {
+        Boolean isOwner = (currentUserId != null && d.getOwnerId() != null) ? d.getOwnerId().equals(currentUserId) : null;
         return DiagramSummaryDto.builder()
                 .id(d.getId())
                 .name(d.getName())
                 .description(d.getDescription())
                 .ownerId(d.getOwnerId())
+                .ownerName(ownerName)
+                .isOwner(isOwner)
                 .joinCode(d.getJoinCode())
                 .createdAt(d.getCreatedAt())
                 .updatedAt(d.getUpdatedAt())

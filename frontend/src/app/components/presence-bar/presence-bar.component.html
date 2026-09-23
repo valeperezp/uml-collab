@@ -1,9 +1,24 @@
 <div class="presence-bar" [class.offline]="!connected">
-  <span class="dot" [class.online]="connected"></span>
-  <span class="status">{{ connected ? 'En vivo' : 'Conectando…' }}</span>
-  <div class="avatars">
-    @for (p of people; track p.userId) {
-      <span class="avatar" [style.background]="p.colorHex" [title]="p.displayName">{{ initials(p.displayName) }}</span>
-    }
+  <div class="status-indicator-group">
+    <span class="status-dot" [class.online]="connected"></span>
+    <span class="status-label">{{ connected ? 'En vivo' : 'Conectando…' }}</span>
   </div>
+
+  @if (people.length > 0) {
+    <div class="collaborators-group">
+      <div class="avatars-stack">
+        @for (p of people; track p.userId) {
+          <span
+            class="avatar-circle"
+            [style.background]="p.colorHex || '#8b5cf6'"
+            [title]="p.displayName + ' (Colaborando)'"
+          >
+            {{ initials(p.displayName) }}
+          </span>
+        }
+      </div>
+      <span class="collaborator-count">{{ people.length }} activo{{ people.length === 1 ? '' : 's' }}</span>
+    </div>
+  }
 </div>
+

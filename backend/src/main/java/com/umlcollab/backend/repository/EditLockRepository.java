@@ -11,6 +11,7 @@ import java.util.UUID;
 public interface EditLockRepository extends JpaRepository<EditLock, UUID> {
     Optional<EditLock> findByElementTypeAndElementId(EditLock.LockedElementType elementType, UUID elementId);
     List<EditLock> findByDiagramId(UUID diagramId);
+    void deleteByDiagramId(UUID diagramId);
     void deleteByElementTypeAndElementIdAndUserId(EditLock.LockedElementType elementType, UUID elementId, UUID userId);
     List<EditLock> findByLastHeartbeatAtBefore(Instant threshold);
     void deleteByUserId(UUID userId);

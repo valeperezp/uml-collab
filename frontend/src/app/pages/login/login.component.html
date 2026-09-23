@@ -1,35 +1,115 @@
 <div class="login-screen">
-  <form class="login-card" (ngSubmit)="submit()">
-    <h1>UML Collab</h1>
-    <p class="subtitle">Diseño colaborativo de bases de datos, asistido por IA</p>
+  <div class="bg-mesh">
+    <div class="glow-orb glow-1"></div>
+    <div class="glow-orb glow-2"></div>
+    <div class="glow-orb glow-3"></div>
+  </div>
 
-    @if (mode() === 'register') {
-      <label>
-        Nombre para mostrar
-        <input type="text" name="displayName" [(ngModel)]="displayName" required />
-      </label>
-    }
+  <div class="login-container">
+    <form class="login-card" (ngSubmit)="submit()">
+      <div class="brand-header">
+        <div class="brand-badge">
+          <svg class="brand-icon-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="21" x2="9" y2="9"/>
+          </svg>
+        </div>
+        <h1>UML Collab</h1>
+        <p class="subtitle">Diseño colaborativo de arquitectura y bases de datos con IA</p>
+      </div>
 
-    <label>
-      Usuario
-      <input type="text" name="username" [(ngModel)]="username" required autocomplete="username" />
-    </label>
+      <div class="mode-pills">
+        <button
+          type="button"
+          class="mode-pill"
+          [class.active]="mode() === 'login'"
+          (click)="mode() !== 'login' && toggleMode()"
+        >
+          Iniciar sesión
+        </button>
+        <button
+          type="button"
+          class="mode-pill"
+          [class.active]="mode() === 'register'"
+          (click)="mode() !== 'register' && toggleMode()"
+        >
+          Crear cuenta
+        </button>
+      </div>
 
-    <label>
-      Contraseña
-      <input type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" />
-    </label>
+      <div class="fields-group">
+        @if (mode() === 'register') {
+          <label class="field-label">
+            <span class="label-text">Nombre para mostrar</span>
+            <input
+              type="text"
+              name="displayName"
+              [(ngModel)]="displayName"
+              required
+              placeholder="Ej: Valeria Pérez"
+              class="form-input"
+            />
+          </label>
+        }
 
-    @if (error()) {
-      <div class="error">{{ error() }}</div>
-    }
+        <label class="field-label">
+          <span class="label-text">Usuario</span>
+          <input
+            type="text"
+            name="username"
+            [(ngModel)]="username"
+            required
+            autocomplete="username"
+            placeholder="Tu nombre de usuario"
+            class="form-input"
+          />
+        </label>
 
-    <button type="submit" [disabled]="loading()">
-      {{ mode() === 'login' ? 'Entrar' : 'Crear cuenta' }}
-    </button>
+        <label class="field-label">
+          <span class="label-text">Contraseña</span>
+          <input
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+            class="form-input"
+          />
+        </label>
+      </div>
 
-    <button type="button" class="link" (click)="toggleMode()">
-      {{ mode() === 'login' ? '¿No tenés cuenta? Registrate' : '¿Ya tenés cuenta? Entrá' }}
-    </button>
-  </form>
+      @if (error()) {
+        <div class="error-banner">
+          <svg class="error-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ error() }}</span>
+        </div>
+      }
+
+      <button type="submit" class="submit-btn" [disabled]="loading()">
+        @if (loading()) {
+          <span class="spinner"></span>
+          <span>Procesando…</span>
+        } @else {
+          <span>{{ mode() === 'login' ? 'Ingresar a mi espacio' : 'Crear mi cuenta' }}</span>
+          <svg class="btn-arrow-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        }
+      </button>
+
+      <div class="footer-switch">
+        <span>{{ mode() === 'login' ? '¿Aún no tenés cuenta?' : '¿Ya tenés una cuenta?' }}</span>
+        <button type="button" class="link-btn" (click)="toggleMode()">
+          {{ mode() === 'login' ? 'Registrate gratis' : 'Iniciá sesión' }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

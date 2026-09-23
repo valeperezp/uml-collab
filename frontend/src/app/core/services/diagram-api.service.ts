@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AiCommandResponse,
+  AiTestRequest,
+  AiTestResponse,
   AttributeDto,
   ClassDto,
   DataType,
@@ -13,6 +15,8 @@ import {
   LockedElementType,
   RelationshipDto,
   RelationshipType,
+  UserAiConfig,
+  UserAiConfigUpdate,
   Visibility,
 } from '../models/models';
 
@@ -37,6 +41,18 @@ export class DiagramApiService {
 
   joinByCode(code: string): Observable<DiagramSummary> {
     return this.http.get<DiagramSummary>(`${this.base}/diagrams/join/${code}`);
+  }
+
+  clearDiagram(diagramId: string): Observable<DiagramDetail> {
+    return this.http.post<DiagramDetail>(`${this.base}/diagrams/${diagramId}/clear`, {});
+  }
+
+  deleteDiagram(diagramId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/diagrams/${diagramId}`);
+  }
+
+  leaveDiagram(diagramId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/diagrams/${diagramId}/leave`);
   }
 
   // --- Clases ---
@@ -72,6 +88,7 @@ export class DiagramApiService {
   createRelationship(diagramId: string, req: {
     sourceClassId: string; targetClassId: string; type: RelationshipType;
     sourceMultiplicity?: string; targetMultiplicity?: string; sourceRoleName?: string; targetRoleName?: string;
+    label?: string;
   }): Observable<RelationshipDto> {
     return this.http.post<RelationshipDto>(`${this.base}/diagrams/${diagramId}/relationships`, req);
   }
@@ -106,6 +123,23 @@ export class DiagramApiService {
     const form = new FormData();
     form.append('file', file);
     return this.http.post<AiCommandResponse>(`${this.base}/diagrams/${diagramId}/ai/image`, form);
+  }
+
+  // --- Configuración de Credenciales de IA del Usuario ---
+  getAiConfig(): Observable<UserAiConfig> {
+    return this.http.get<UserAiConfig>(`${this.base}/user/ai-config`);
+  }
+
+  updateAiConfig(req: UserAiConfigUpdate): Observable<UserAiConfig> {
+    return this.http.put<UserAiConfig>(`${this.base}/user/ai-config`, req);
+  }
+
+  resetAiConfig(): Observable<UserAiConfig> {
+    return this.http.delete<UserAiConfig>(`${this.base}/user/ai-config`);
+  }
+
+  testAiConfig(req: AiTestRequest): Observable<AiTestResponse> {
+    return this.http.post<AiTestResponse>(`${this.base}/user/ai-config/test`, req);
   }
 
   // --- XMI / Enterprise Architect ---

@@ -60,6 +60,10 @@ public class CodeGenPlanner {
                 ClassPlan parent = plansById.get(r.getTargetClassId());
                 if (child != null && parent != null) {
                     child.superClassName = parent.className;
+                    if (child.idField != null) {
+                        child.fields.remove(child.idField);
+                        child.idField = parent.idField;
+                    }
                 }
             }
         }
@@ -67,7 +71,7 @@ public class CodeGenPlanner {
         // Asociaciones (incluye agregacion/composicion, tratadas igual estructuralmente + cascada en composicion).
         int anonCounter = 0;
         for (RelationshipDto r : diagram.getRelationships()) {
-            if (r.getType() == RelationshipType.GENERALIZATION) continue;
+            if (r.getType() == RelationshipType.GENERALIZATION || r.getType() == RelationshipType.REALIZATION || r.getType() == RelationshipType.DEPENDENCY) continue;
             ClassPlan sourcePlan = plansById.get(r.getSourceClassId());
             ClassPlan targetPlan = plansById.get(r.getTargetClassId());
             if (sourcePlan == null || targetPlan == null) continue;
@@ -93,35 +97,58 @@ public class CodeGenPlanner {
 
     private void addOneToOne(ClassPlan owningSideOne, ClassPlan otherSide, RelationshipDto r, boolean composition) {
         // Por convencion, el lado "source" es el dueno (tiene la FK).
+        String baseOwning = (r.getLabel() != null && !r.getLabel().isBlank())
+                ? NameUtils.camelCase(r.getLabel())
+                : NameUtils.camelCase(otherSide.originalName);
         RelationPlan owning = new RelationPlan();
         owning.kind = RelationPlan.Kind.ONE_TO_ONE;
         owning.collection = false;
         owning.owningSide = true;
         owning.targetClassName = otherSide.className;
-        owning.fieldName = uniqueFieldName(owningSideOne, NameUtils.camelCase(otherSide.originalName));
+        owning.fieldName = uniqueFieldName(owningSideOne, baseOwning);
         owning.joinColumnName = NameUtils.snakeCase(owning.fieldName) + "_id";
         owning.cascadeAll = composition;
+        populateTargetIdInfo(owning, otherSide);
         owningSideOne.relations.add(owning);
 
+        String baseInverse = (r.getLabel() != null && !r.getLabel().isBlank())
+                ? NameUtils.camelCase(r.getLabel()) + "Inverse"
+                : NameUtils.camelCase(owningSideOne.originalName);
         RelationPlan inverse = new RelationPlan();
         inverse.kind = RelationPlan.Kind.ONE_TO_ONE;
         inverse.collection = false;
         inverse.owningSide = false;
         inverse.targetClassName = owningSideOne.className;
-        inverse.fieldName = uniqueFieldName(otherSide, NameUtils.camelCase(owningSideOne.originalName));
+        inverse.fieldName = uniqueFieldName(otherSide, baseInverse);
         inverse.mappedBy = owning.fieldName;
+        populateTargetIdInfo(inverse, owningSideOne);
         otherSide.relations.add(inverse);
     }
 
     /** "one" tiene la coleccion (OneToMany, mappedBy), "many" tiene la FK (ManyToOne, dueno). */
     private void addOneToMany(ClassPlan one, ClassPlan many, RelationshipDto r, boolean composition) {
+        String baseManyToOne;
+        String baseOneToMany;
+
+        if (r.getLabel() != null && !r.getLabel().isBlank()) {
+            baseManyToOne = NameUtils.camelCase(r.getLabel());
+            baseOneToMany = NameUtils.pluralize(NameUtils.camelCase(r.getLabel()));
+        } else if (one == many) {
+            baseManyToOne = "padre";
+            baseOneToMany = "hijos";
+        } else {
+            baseManyToOne = NameUtils.camelCase(one.originalName);
+            baseOneToMany = NameUtils.pluralize(NameUtils.camelCase(many.originalName));
+        }
+
         RelationPlan manyToOne = new RelationPlan();
         manyToOne.kind = RelationPlan.Kind.MANY_TO_ONE;
         manyToOne.collection = false;
         manyToOne.owningSide = true;
         manyToOne.targetClassName = one.className;
-        manyToOne.fieldName = uniqueFieldName(many, NameUtils.camelCase(one.originalName));
+        manyToOne.fieldName = uniqueFieldName(many, baseManyToOne);
         manyToOne.joinColumnName = NameUtils.snakeCase(manyToOne.fieldName) + "_id";
+        populateTargetIdInfo(manyToOne, one);
         many.relations.add(manyToOne);
 
         RelationPlan oneToMany = new RelationPlan();
@@ -129,22 +156,31 @@ public class CodeGenPlanner {
         oneToMany.collection = true;
         oneToMany.owningSide = false;
         oneToMany.targetClassName = many.className;
-        oneToMany.fieldName = uniqueFieldName(one, NameUtils.pluralize(NameUtils.camelCase(many.originalName)));
+        oneToMany.fieldName = uniqueFieldName(one, baseOneToMany);
         oneToMany.mappedBy = manyToOne.fieldName;
         oneToMany.cascadeAll = composition;
+        populateTargetIdInfo(oneToMany, many);
         one.relations.add(oneToMany);
     }
 
     private void addManyToMany(ClassPlan source, ClassPlan target, RelationshipDto r, int counter) {
+        String baseSource = (r.getLabel() != null && !r.getLabel().isBlank())
+                ? NameUtils.pluralize(NameUtils.camelCase(r.getLabel()))
+                : NameUtils.pluralize(NameUtils.camelCase(target.originalName));
+        String baseTarget = (r.getLabel() != null && !r.getLabel().isBlank())
+                ? NameUtils.pluralize(NameUtils.camelCase(r.getLabel())) + "Inverse"
+                : NameUtils.pluralize(NameUtils.camelCase(source.originalName));
+
         RelationPlan owning = new RelationPlan();
         owning.kind = RelationPlan.Kind.MANY_TO_MANY;
         owning.collection = true;
         owning.owningSide = true;
         owning.targetClassName = target.className;
-        owning.fieldName = uniqueFieldName(source, NameUtils.pluralize(NameUtils.camelCase(target.originalName)));
+        owning.fieldName = uniqueFieldName(source, baseSource);
         owning.joinTableName = source.tableName + "_" + target.tableName;
         owning.joinColumnSelf = source.tableName + "_id";
         owning.joinColumnOther = target.tableName + "_id";
+        populateTargetIdInfo(owning, target);
         source.relations.add(owning);
 
         RelationPlan inverse = new RelationPlan();
@@ -152,9 +188,22 @@ public class CodeGenPlanner {
         inverse.collection = true;
         inverse.owningSide = false;
         inverse.targetClassName = source.className;
-        inverse.fieldName = uniqueFieldName(target, NameUtils.pluralize(NameUtils.camelCase(source.originalName)));
+        inverse.fieldName = uniqueFieldName(target, baseTarget);
         inverse.mappedBy = owning.fieldName;
+        populateTargetIdInfo(inverse, source);
         target.relations.add(inverse);
+    }
+
+    private void populateTargetIdInfo(RelationPlan relation, ClassPlan targetPlan) {
+        if (targetPlan.idField != null) {
+            relation.targetIdType = targetPlan.idField.javaType;
+            relation.targetIdImport = targetPlan.idField.javaImport;
+            relation.targetIdGetter = "get" + NameUtils.capitalize(targetPlan.idField.name);
+        } else {
+            relation.targetIdType = "UUID";
+            relation.targetIdImport = "java.util.UUID";
+            relation.targetIdGetter = "getId";
+        }
     }
 
     private RelationshipDto invert(RelationshipDto r) {

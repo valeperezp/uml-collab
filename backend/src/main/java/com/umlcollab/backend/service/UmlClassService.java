@@ -12,6 +12,7 @@ import com.umlcollab.backend.repository.UmlAttributeRepository;
 import com.umlcollab.backend.repository.UmlClassRepository;
 import com.umlcollab.backend.websocket.DiagramBroadcastService;
 import com.umlcollab.backend.websocket.DiagramEvent;
+import com.umlcollab.backend.repository.UmlRelationshipRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,16 +23,19 @@ public class UmlClassService {
 
     private final UmlClassRepository classRepository;
     private final UmlAttributeRepository attributeRepository;
+    private final UmlRelationshipRepository relationshipRepository;
     private final DiagramService diagramService;
     private final LockService lockService;
     private final DiagramBroadcastService broadcastService;
     private final DiagramMapper mapper;
 
     public UmlClassService(UmlClassRepository classRepository, UmlAttributeRepository attributeRepository,
+                            UmlRelationshipRepository relationshipRepository,
                             DiagramService diagramService, LockService lockService,
                             DiagramBroadcastService broadcastService, DiagramMapper mapper) {
         this.classRepository = classRepository;
         this.attributeRepository = attributeRepository;
+        this.relationshipRepository = relationshipRepository;
         this.diagramService = diagramService;
         this.lockService = lockService;
         this.broadcastService = broadcastService;
@@ -51,6 +55,7 @@ public class UmlClassService {
                 .y(request.getY())
                 .build();
         umlClass = classRepository.save(umlClass);
+        diagram.getClasses().add(umlClass);
         ClassDto dto = mapper.toDto(umlClass);
         broadcast(diagramId, DiagramEvent.DiagramEventType.CLASS_CREATED, dto, userId, displayName);
         return dto;
@@ -80,6 +85,7 @@ public class UmlClassService {
     public void delete(UUID diagramId, UUID classId, UUID userId, String displayName) {
         UmlClass umlClass = getEntity(classId);
         lockService.acquire(diagramId, EditLock.LockedElementType.CLASS, classId, userId, displayName);
+        relationshipRepository.deleteByClassId(classId);
         classRepository.delete(umlClass);
         broadcast(diagramId, DiagramEvent.DiagramEventType.CLASS_DELETED, classId, userId, displayName);
     }
@@ -144,6 +150,11 @@ public class UmlClassService {
     public UmlClass getEntity(UUID classId) {
         return classRepository.findById(classId)
                 .orElseThrow(() -> new NotFoundException("Clase no encontrada: " + classId));
+    }
+
+    public boolean isNameTaken(UUID diagramId, String name) {
+        return classRepository.findByDiagramIdOrderByCreatedAtAsc(diagramId).stream()
+                .anyMatch(c -> c.getName().equalsIgnoreCase(name));
     }
 
     private void assertUniqueName(UUID diagramId, String name, UUID excludeClassId) {

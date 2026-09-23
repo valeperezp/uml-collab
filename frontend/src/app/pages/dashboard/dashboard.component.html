@@ -1,43 +1,291 @@
-<div class="dashboard">
-  <header>
-    <div>
-      <h1>Mis diagramas</h1>
-      <p class="subtitle">Hola, {{ auth.current()?.displayName }}</p>
+<div class="dashboard-page">
+  <header class="dash-header">
+    <div class="header-left">
+      <div class="brand-badge-mini">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="page-title">Espacio de Trabajo</h1>
+        <p class="subtitle">
+          Bienvenido, <strong>{{ auth.current()?.displayName }}</strong> · Diagramas UML Colaborativos
+        </p>
+      </div>
     </div>
-    <button class="ghost" (click)="logout()">Cerrar sesión</button>
+    <div class="header-right">
+      <button class="btn-ai-settings" (click)="aiSettingsOpen.set(true)" title="Configurar credenciales de IA (Gemini, OpenAI, Claude, etc.)">
+        <svg class="btn-icon-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+        </svg>
+        <span>Configuración IA</span>
+      </button>
+      <div class="user-pill">
+        <span class="user-avatar">{{ auth.current()?.displayName?.charAt(0)?.toUpperCase() || 'U' }}</span>
+        <span class="user-name">{{ auth.current()?.displayName }}</span>
+      </div>
+      <button class="btn-ghost-logout" (click)="logout()" title="Cerrar sesión">
+        <span>Cerrar sesión</span>
+      </button>
+    </div>
   </header>
 
-  @if (error()) {
-    <div class="error">{{ error() }}</div>
-  }
-
-  <section class="actions">
-    <div class="card">
-      <h3>Nuevo diagrama</h3>
-      <input placeholder="Nombre (ej: FashionStore)" [(ngModel)]="newName" />
-      <input placeholder="Descripción (opcional)" [(ngModel)]="newDescription" />
-      <button (click)="create()">Crear</button>
-    </div>
-
-    <div class="card">
-      <h3>Unirme a un diagrama</h3>
-      <p class="hint">Pedile a un compañero el código de invitación de su diagrama.</p>
-      <input placeholder="Código (ej: A1B2C3D4)" [(ngModel)]="joinCode" style="text-transform: uppercase" />
-      <button (click)="join()">Unirme</button>
-    </div>
-  </section>
-
-  <section class="list">
-    @for (d of diagrams(); track d.id) {
-      <div class="diagram-row" (click)="open(d)">
-        <div>
-          <div class="name">{{ d.name }}</div>
-          <div class="meta">{{ d.classCount }} clase(s) · código {{ d.joinCode }}</div>
-        </div>
-        <span class="arrow">→</span>
+  <main class="dash-content">
+    @if (error()) {
+      <div class="error-banner">
+        <svg class="error-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ error() }}</span>
+        <button class="btn-close-error" (click)="error.set(null)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
-    } @empty {
-      <p class="hint">Todavía no creaste ningún diagrama.</p>
     }
-  </section>
+
+    <section class="actions-grid">
+      <!-- Card: Crear Diagrama -->
+      <div class="action-card create-card">
+        <div class="card-header">
+          <div class="card-icon-badge plus-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Nuevo diagrama</h3>
+            <p class="card-desc">Crea un espacio en blanco y modela tus entidades</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <input
+            class="dash-input"
+            placeholder="Nombre (ej: FashionStore, E-Commerce)"
+            [(ngModel)]="newName"
+            (keyup.enter)="create()"
+          />
+          <input
+            class="dash-input"
+            placeholder="Descripción breve (opcional)"
+            [(ngModel)]="newDescription"
+            (keyup.enter)="create()"
+          />
+          <button class="btn-primary-card" (click)="create()" [disabled]="!newName.trim()">
+            <span>Crear diagrama</span>
+            <svg class="btn-arrow-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card: Unirse a Diagrama -->
+      <div class="action-card join-card">
+        <div class="card-header">
+          <div class="card-icon-badge join-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Unirme a un diagrama</h3>
+            <p class="card-desc">Colabora en tiempo real usando un código de invitación</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="code-input-wrapper">
+            <input
+              class="dash-input code-input"
+              placeholder="CÓDIGO (EJ: A1B2C3D4)"
+              [(ngModel)]="joinCode"
+              (keyup.enter)="join()"
+            />
+          </div>
+          <p class="hint-text">El diagrama quedará guardado en tu espacio para que puedas volver cuando quieras.</p>
+          <button class="btn-secondary-card" (click)="join()" [disabled]="!joinCode.trim()">
+            <span>Unirme ahora</span>
+            <svg class="btn-arrow-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="diagrams-section">
+      <div class="section-title-row">
+        <div class="title-and-tabs">
+          <h2>Tus proyectos</h2>
+          
+          <!-- Filtros de pestañas -->
+          <div class="filter-tabs">
+            <button 
+              class="filter-tab" 
+              [class.active]="activeFilter() === 'all'"
+              (click)="activeFilter.set('all')"
+            >
+              Todos ({{ diagrams().length }})
+            </button>
+            <button 
+              class="filter-tab" 
+              [class.active]="activeFilter() === 'mine'"
+              (click)="activeFilter.set('mine')"
+            >
+              Creados por mí ({{ ownedCount() }})
+            </button>
+            <button 
+              class="filter-tab" 
+              [class.active]="activeFilter() === 'shared'"
+              (click)="activeFilter.set('shared')"
+            >
+              Compartidos conmigo ({{ sharedCount() }})
+            </button>
+          </div>
+        </div>
+
+        <span class="count-badge">{{ filteredDiagrams().length }} visible(s)</span>
+      </div>
+
+      <div class="diagrams-grid">
+        @for (d of filteredDiagrams(); track d.id) {
+          <div class="diagram-card" (click)="open(d)">
+            <div class="diagram-card-top">
+              <div class="diagram-type-icon" [class.is-shared]="!d.isOwner">
+                @if (d.isOwner) {
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                } @else {
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                }
+              </div>
+              <div class="diagram-card-info">
+                <div class="diagram-card-header-line">
+                  <div class="diagram-card-name" [title]="d.name">{{ d.name }}</div>
+                  
+                  <!-- Badge de rol -->
+                  @if (d.isOwner) {
+                    <span class="role-badge role-owner" title="Eres el creador de este proyecto">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      <span>Mío</span>
+                    </span>
+                  } @else {
+                    <span class="role-badge role-shared" title="Proyecto compartido">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      <span>de {{ d.ownerName || 'Compañero' }}</span>
+                    </span>
+                  }
+                </div>
+
+                @if (d.description) {
+                  <p class="diagram-card-desc">{{ d.description }}</p>
+                }
+
+                <div class="diagram-code-pill" title="Código de acceso para invitar compañeros" (click)="$event.stopPropagation()">
+                  <span class="code-label">CÓDIGO</span>
+                  <span class="code-value">{{ d.joinCode }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="diagram-card-footer">
+              <span class="class-stat-pill">
+                <span class="stat-dot"></span>
+                {{ d.classCount }} clase{{ d.classCount === 1 ? '' : 's' }}
+              </span>
+
+              <div class="card-actions-row">
+                @if (d.isOwner) {
+                  <button 
+                    class="btn-icon-danger" 
+                    (click)="deleteDiagram($event, d)" 
+                    title="Eliminar este diagrama para todos"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                  </button>
+                } @else {
+                  <button 
+                    class="btn-icon-leave" 
+                    (click)="leaveDiagram($event, d)" 
+                    title="Quitar de mi lista"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    <span>Salir</span>
+                  </button>
+                }
+
+                <span class="open-action">
+                  <span>Abrir</span>
+                  <svg class="arrow-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <div class="empty-icon-circle">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </div>
+            @if (activeFilter() === 'mine') {
+              <h3>No tienes diagramas creados por ti</h3>
+              <p>Comienza creando un nuevo proyecto arriba con el botón "Crear diagrama".</p>
+            } @else if (activeFilter() === 'shared') {
+              <h3>No tienes diagramas compartidos todavía</h3>
+              <p>Pídele a un compañero su código de invitación de 8 caracteres y únete arriba.</p>
+            } @else {
+              <h3>Todavía no tienes ningún diagrama</h3>
+              <p>Comienza creando un nuevo proyecto arriba o únete al espacio de un compañero con su código.</p>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Configuración de IA -->
+  <app-ai-settings-modal
+    [open]="aiSettingsOpen()"
+    (close)="aiSettingsOpen.set(false)"
+  ></app-ai-settings-modal>
 </div>

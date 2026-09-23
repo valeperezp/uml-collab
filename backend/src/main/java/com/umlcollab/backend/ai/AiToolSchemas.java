@@ -25,7 +25,7 @@ public final class AiToolSchemas {
     public static final String VISIBILITIES = "[\"PUBLIC\",\"PRIVATE\",\"PROTECTED\",\"PACKAGE\"]";
 
     public static final String RELATIONSHIP_TYPES =
-            "[\"ASSOCIATION\",\"AGGREGATION\",\"COMPOSITION\",\"GENERALIZATION\",\"REALIZATION\"]";
+            "[\"ASSOCIATION\",\"AGGREGATION\",\"COMPOSITION\",\"GENERALIZATION\",\"REALIZATION\",\"DEPENDENCY\"]";
 
     /** Herramienta para comandos incrementales por texto/voz sobre un diagrama que ya existe. */
     public static String applyOperationsTool() {
@@ -81,26 +81,27 @@ public final class AiToolSchemas {
           "type": "object",
           "properties": {
             "type": { "type": "string", "enum": %s },
-            "className": { "type": "string", "description": "Nombre de la clase objetivo de la operacion (se resuelve por nombre, no hace falta id)." },
-            "newName": { "type": "string", "description": "Nuevo nombre de la clase (RENAME_CLASS) o nombre de la clase a crear (CREATE_CLASS)." },
+            "className": { "type": "string", "description": "Nombre de la clase a crear (para CREATE_CLASS) o nombre de la clase objetivo (para ADD_ATTRIBUTE, DELETE_CLASS, MOVE_CLASS). Ejemplo: 'Cliente', 'Producto', 'Pedido'." },
+            "newName": { "type": "string", "description": "Solo para RENAME_CLASS: nuevo nombre que tendra la clase." },
             "isAbstract": { "type": "boolean" },
-            "x": { "type": "number", "description": "Posicion X en el lienzo (si no se sabe, usar un valor razonable separado de las demas clases)." },
-            "y": { "type": "number" },
-            "attributeName": { "type": "string" },
-            "newAttributeName": { "type": "string", "description": "Nuevo nombre del atributo, solo para UPDATE_ATTRIBUTE cuando se le cambia el nombre." },
-            "dataType": { "type": "string", "enum": %s },
-            "visibility": { "type": "string", "enum": %s },
-            "isPrimaryKey": { "type": "boolean" },
+            "x": { "type": "number", "description": "Posicion X en el lienzo (ej: 100, 350, 600)." },
+            "y": { "type": "number", "description": "Posicion Y en el lienzo (ej: 100, 300)." },
+            "attributeName": { "type": "string", "description": "Nombre del atributo (ej: 'id', 'nombre', 'precio', 'email')." },
+            "newAttributeName": { "type": "string", "description": "Solo para UPDATE_ATTRIBUTE: nuevo nombre del atributo." },
+            "dataType": { "type": "string", "enum": %s, "description": "Tipo de dato: STRING, INTEGER, LONG, DOUBLE, DECIMAL, BOOLEAN, DATE, DATETIME, UUID." },
+            "visibility": { "type": "string", "enum": %s, "description": "Visibilidad del atributo (PUBLIC, PRIVATE, PROTECTED, PACKAGE)." },
+            "isPrimaryKey": { "type": "boolean", "description": "True si este atributo es clave primaria (ej: id)." },
             "nullable": { "type": "boolean" },
             "unique": { "type": "boolean" },
-            "sourceClassName": { "type": "string", "description": "Solo para operaciones de relacion." },
-            "targetClassName": { "type": "string", "description": "Solo para operaciones de relacion." },
-            "relationshipType": { "type": "string", "enum": %s },
-            "sourceMultiplicity": { "type": "string", "description": "Multiplicidad UML del lado origen: 1, 0..1, * , 1..*, 0..*" },
-            "targetMultiplicity": { "type": "string" },
+            "sourceClassName": { "type": "string", "description": "Nombre de la clase origen de la relacion (ej: 'Cliente'). NUNCA tipos de datos como BOOLEAN o STRING." },
+            "targetClassName": { "type": "string", "description": "Nombre de la clase destino de la relacion (ej: 'Pedido'). NUNCA tipos de datos como BOOLEAN o STRING." },
+            "relationshipType": { "type": "string", "enum": %s, "description": "Tipo de relacion: ASSOCIATION, AGGREGATION, COMPOSITION, GENERALIZATION, REALIZATION, DEPENDENCY." },
+            "sourceMultiplicity": { "type": "string", "description": "Multiplicidad UML del lado origen: '1', '0..1', '*', '1..*', '0..*'." },
+            "targetMultiplicity": { "type": "string", "description": "Multiplicidad UML del lado destino: '1', '0..1', '*', '1..*', '0..*'." },
             "sourceRoleName": { "type": "string" },
             "targetRoleName": { "type": "string" },
-            "rationale": { "type": "string", "description": "Por que se hizo esta operacion (una frase corta)." }
+            "label": { "type": "string", "description": "Nombre, verbo o rol de la relacion (ej: 'vende', 'compra', 'tiene', 'supervisa', 'pertenece')." },
+            "rationale": { "type": "string", "description": "Por que se hizo esta operacion." }
           },
           "required": ["type"]
         }

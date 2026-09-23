@@ -22,12 +22,10 @@ umlcollab:
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:720}
   lock:
     ttl-seconds: ${LOCK_TTL_SECONDS:20}
-  ai:
-    provider: anthropic
-    api-key: ${ANTHROPIC_API_KEY:}
-    model: ${ANTHROPIC_MODEL:claude-sonnet-4-5-20250929}
-    base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com/v1/messages}
-    enabled: ${AI_ENABLED:true}
+  # La seleccion de proveedor de IA (Gemini > Anthropic > OpenAI, segun cual
+  # tenga api-key no vacia) se resuelve en Java (ver AiClient), no aca, para
+  # no depender de defaults de YAML anidados que Spring no encadena bien
+  # cuando docker-compose define la variable igual con valor vacio.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4210}
 

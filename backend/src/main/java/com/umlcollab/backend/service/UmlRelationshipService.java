@@ -1,10 +1,13 @@
 package com.umlcollab.backend.service;
 
+import com.umlcollab.backend.dto.ClassDto;
 import com.umlcollab.backend.dto.RelationshipDto;
+import com.umlcollab.backend.dto.requests.CreateClassRequest;
 import com.umlcollab.backend.dto.requests.RelationshipRequest;
 import com.umlcollab.backend.exception.NotFoundException;
 import com.umlcollab.backend.model.Diagram;
 import com.umlcollab.backend.model.EditLock;
+import com.umlcollab.backend.model.RelationshipType;
 import com.umlcollab.backend.model.UmlClass;
 import com.umlcollab.backend.model.UmlRelationship;
 import com.umlcollab.backend.repository.UmlRelationshipRepository;
@@ -45,18 +48,71 @@ public class UmlRelationshipService {
         // Exclusion mutua: para trazar la relacion hay que tener (momentaneamente) la clase origen.
         lockService.acquire(diagramId, EditLock.LockedElementType.CLASS, source.getId(), userId, displayName);
 
+        String srcMult = normalize(request.getSourceMultiplicity());
+        String tgtMult = normalize(request.getTargetMultiplicity());
+
+        // Si es una asociacion Muchos a Muchos (* a *) entre clases distintas, se descompone automaticamente creando una clase intermedia
+        if (!source.getId().equals(target.getId()) && request.getType() == RelationshipType.ASSOCIATION && isMany(srcMult) && isMany(tgtMult)) {
+            String interClassName = generateIntermediateClassName(diagramId, source.getName(), target.getName());
+            double interX = Math.round((source.getX() + target.getX()) / 2.0);
+            double interY = Math.round((source.getY() + target.getY()) / 2.0);
+
+            // Si quedan muy cerca, se le da un leve desplazamiento vertical
+            if (Math.abs(source.getX() - target.getX()) < 80 && Math.abs(source.getY() - target.getY()) < 80) {
+                interY += 70;
+            }
+
+            CreateClassRequest createClassReq = new CreateClassRequest();
+            createClassReq.setName(interClassName);
+            createClassReq.setX(interX);
+            createClassReq.setY(interY);
+            createClassReq.setAbstract(false);
+
+            ClassDto interClassDto = classService.create(diagramId, createClassReq, userId, displayName);
+            UmlClass interClass = classService.getEntity(interClassDto.getId());
+
+            // Relacion 1: source (1) -> intermediate (*)
+            UmlRelationship rel1 = UmlRelationship.builder()
+                    .diagram(diagram)
+                    .sourceClass(source)
+                    .targetClass(interClass)
+                    .type(RelationshipType.ASSOCIATION)
+                    .sourceMultiplicity(srcMult.startsWith("0") ? "0..1" : "1")
+                    .targetMultiplicity("*")
+                    .build();
+            rel1 = relationshipRepository.save(rel1);
+            RelationshipDto dto1 = mapper.toDto(rel1);
+            broadcast(diagramId, DiagramEvent.DiagramEventType.RELATIONSHIP_CREATED, dto1, userId, displayName);
+
+            // Relacion 2: target (1) -> intermediate (*)
+            UmlRelationship rel2 = UmlRelationship.builder()
+                    .diagram(diagram)
+                    .sourceClass(target)
+                    .targetClass(interClass)
+                    .type(RelationshipType.ASSOCIATION)
+                    .sourceMultiplicity(tgtMult.startsWith("0") ? "0..1" : "1")
+                    .targetMultiplicity("*")
+                    .build();
+            rel2 = relationshipRepository.save(rel2);
+            RelationshipDto dto2 = mapper.toDto(rel2);
+            broadcast(diagramId, DiagramEvent.DiagramEventType.RELATIONSHIP_CREATED, dto2, userId, displayName);
+
+            return dto1;
+        }
+
         UmlRelationship relationship = UmlRelationship.builder()
                 .diagram(diagram)
                 .sourceClass(source)
                 .targetClass(target)
                 .type(request.getType())
-                .sourceMultiplicity(normalize(request.getSourceMultiplicity()))
-                .targetMultiplicity(normalize(request.getTargetMultiplicity()))
+                .sourceMultiplicity(srcMult)
+                .targetMultiplicity(tgtMult)
                 .sourceRoleName(request.getSourceRoleName())
                 .targetRoleName(request.getTargetRoleName())
                 .label(request.getLabel())
                 .build();
         relationship = relationshipRepository.save(relationship);
+        diagram.getRelationships().add(relationship);
 
         RelationshipDto dto = mapper.toDto(relationship);
         broadcast(diagramId, DiagramEvent.DiagramEventType.RELATIONSHIP_CREATED, dto, userId, displayName);
@@ -86,6 +142,7 @@ public class UmlRelationshipService {
         UmlRelationship relationship = getEntity(relationshipId);
         lockService.acquire(diagramId, EditLock.LockedElementType.RELATIONSHIP, relationshipId, userId, displayName);
         relationshipRepository.delete(relationship);
+        lockService.release(diagramId, EditLock.LockedElementType.RELATIONSHIP, relationshipId, userId);
         broadcast(diagramId, DiagramEvent.DiagramEventType.RELATIONSHIP_DELETED, relationshipId, userId, displayName);
     }
 
@@ -96,9 +153,24 @@ public class UmlRelationshipService {
     }
 
     private String normalize(String multiplicity) {
-        if (multiplicity == null || multiplicity.isBlank()) return "1";
+        if (multiplicity == null || multiplicity.isBlank()) return "";
         String m = multiplicity.trim();
+        if (m.equalsIgnoreCase("none") || m.equalsIgnoreCase("ninguno") || m.equalsIgnoreCase("(ninguno)") || m.equals("-")) return "";
         return m.equals("N") || m.equals("n") ? "*" : m;
+    }
+
+    private boolean isMany(String multiplicity) {
+        return multiplicity != null && multiplicity.contains("*");
+    }
+
+    private String generateIntermediateClassName(UUID diagramId, String sourceName, String targetName) {
+        String base = sourceName + targetName;
+        String candidate = base;
+        int i = 2;
+        while (classService.isNameTaken(diagramId, candidate)) {
+            candidate = base + i++;
+        }
+        return candidate;
     }
 
     private void broadcast(UUID diagramId, DiagramEvent.DiagramEventType type, Object payload, UUID userId, String displayName) {

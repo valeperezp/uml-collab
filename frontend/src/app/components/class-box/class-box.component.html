@@ -7,56 +7,162 @@
   [style.top.px]="classDto.y"
   (click)="bodyClick.emit()"
 >
+  <!-- Class Header -->
   <div class="header" (mousedown)="onHeaderMouseDown($event)">
-    @if (editingName()) {
-      <input
-        class="name-input"
-        [(ngModel)]="nameDraft"
-        (blur)="confirmName()"
-        (keyup.enter)="confirmName()"
-        (mousedown)="$event.stopPropagation()"
-        autofocus
-      />
-    } @else {
-      <span class="name" (dblclick)="startEditName()">{{ classDto.name }}</span>
-    }
-    @if (classDto.isAbstract) {
-      <span class="badge">abstract</span>
-    }
-    <button class="icon" title="Conectar" (mousedown)="$event.stopPropagation()" (click)="startConnect.emit(); $event.stopPropagation()">⇢</button>
-    <button class="icon danger" title="Eliminar clase" (mousedown)="$event.stopPropagation()" (click)="deleteClass.emit(); $event.stopPropagation()">✕</button>
+    <div class="header-top-row">
+      <span class="stereotype-badge">{{ classDto.isAbstract ? '«abstract»' : '«entity»' }}</span>
+      <div class="header-actions">
+        <button
+          class="btn-node-action btn-connect"
+          title="Conectar con otra clase"
+          (mousedown)="$event.stopPropagation()"
+          (click)="startConnect.emit(); $event.stopPropagation()"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </button>
+        <button
+          class="btn-node-action btn-delete"
+          title="Eliminar clase"
+          (mousedown)="$event.stopPropagation()"
+          (click)="deleteClass.emit(); $event.stopPropagation()"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="header-title-row">
+      @if (editingName()) {
+        <div class="name-edit-box" (mousedown)="$event.stopPropagation()">
+          <input
+            class="name-input"
+            [(ngModel)]="nameDraft"
+            (blur)="confirmName()"
+            (keyup.enter)="confirmName()"
+            (keyup.escape)="cancelEditName()"
+            (mousedown)="$event.stopPropagation()"
+            (click)="$event.stopPropagation()"
+            autofocus
+          />
+          <button class="btn-name-action save" title="Guardar (Enter)" (click)="confirmName(); $event.stopPropagation()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </button>
+          <button class="btn-name-action cancel" title="Cancelar (Esc)" (click)="cancelEditName(); $event.stopPropagation()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      } @else {
+        <span class="class-name" (dblclick)="startEditName()" title="Doble click para editar nombre">
+          {{ classDto.name }}
+        </span>
+        <button
+          class="btn-edit-name"
+          title="Editar nombre"
+          (mousedown)="$event.stopPropagation()"
+          (click)="startEditName(); $event.stopPropagation()"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+          </svg>
+        </button>
+      }
+    </div>
   </div>
 
   @if (lockedByOther) {
-    <div class="lock-banner">🔒 editando: {{ lockedByOther }}</div>
+    <div class="lock-banner">
+      <svg class="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <span>Editando: {{ lockedByOther }}</span>
+    </div>
   }
 
-  <div class="attributes">
+  <!-- Attributes Compartment -->
+  <div class="attributes-compartment">
     @for (attr of classDto.attributes; track attr.id) {
-      <div class="attr-row">
-        <span class="visibility">{{ visibilitySymbol(attr) }}</span>
+      <div class="attr-row" [class.is-pk]="attr.isPrimaryKey">
+        <span
+          class="visibility-symbol"
+          [class.public]="visibilitySymbol(attr) === '+'"
+          [class.private]="visibilitySymbol(attr) === '-'"
+          [class.protected]="visibilitySymbol(attr) === '#'"
+        >
+          {{ visibilitySymbol(attr) }}
+        </span>
         <span class="attr-name" [class.pk]="attr.isPrimaryKey">{{ attr.name }}</span>
         <span class="attr-type">: {{ attr.dataType | lowercase }}</span>
         @if (attr.isPrimaryKey) {
-          <span class="pk-badge">PK</span>
+          <span class="pk-pill" title="Clave Primaria">PK</span>
         }
-        <button class="icon small" (click)="removeAttribute.emit(attr.id); $event.stopPropagation()">✕</button>
+        <button
+          class="btn-remove-attr"
+          title="Eliminar atributo"
+          (click)="removeAttribute.emit(attr.id); $event.stopPropagation()"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
+    } @empty {
+      <div class="no-attrs-hint">Sin atributos</div>
     }
   </div>
 
-  @if (showAddAttribute()) {
-    <div class="add-attr-form" (click)="$event.stopPropagation()">
-      <input placeholder="nombre" [(ngModel)]="newAttrName" (keyup.enter)="confirmAddAttribute()" />
-      <select [(ngModel)]="newAttrType">
-        @for (t of dataTypes; track t) {
-          <option [value]="t">{{ t | lowercase }}</option>
-        }
-      </select>
-      <label class="pk-check"><input type="checkbox" [(ngModel)]="newAttrPk" /> PK</label>
-      <button (click)="confirmAddAttribute()">Agregar</button>
-    </div>
-  } @else {
-    <button class="add-attr-btn" [disabled]="disabled" (click)="toggleAddAttribute(); $event.stopPropagation()">+ atributo</button>
-  }
+  <!-- Add Attribute Compartment -->
+  <div class="add-attribute-section">
+    @if (showAddAttribute()) {
+      <div class="add-attr-form" (click)="$event.stopPropagation()">
+        <input
+          class="input-attr-name"
+          placeholder="nombre"
+          [(ngModel)]="newAttrName"
+          (keyup.enter)="confirmAddAttribute()"
+          autofocus
+        />
+        <select class="select-attr-type" [(ngModel)]="newAttrType">
+          @for (t of dataTypes; track t) {
+            <option [value]="t">{{ t | lowercase }}</option>
+          }
+        </select>
+        <label class="pk-checkbox-label" title="Marcar como Primary Key">
+          <input type="checkbox" [(ngModel)]="newAttrPk" />
+          <span>PK</span>
+        </label>
+        <button class="btn-add-confirm" (click)="confirmAddAttribute()" title="Confirmar atributo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    } @else {
+      <button
+        type="button"
+        class="btn-add-attr-toggle"
+        [disabled]="disabled"
+        (click)="toggleAddAttribute(); $event.stopPropagation()"
+      >
+        <svg class="plus-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span>Atributo</span>
+      </button>
+    }
+  </div>
 </div>

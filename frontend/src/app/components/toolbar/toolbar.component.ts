@@ -12,12 +12,18 @@ export class ToolbarComponent {
   @Input() diagramName = '';
   @Input() joinCode = '';
   @Input() generating = false;
+  @Input() aiPanelOpen = false;
+  @Input() aiBusy = false;
 
   @Output() newClass = new EventEmitter<void>();
+  @Output() clearDiagram = new EventEmitter<void>();
   @Output() exportXmi = new EventEmitter<void>();
   @Output() importXmi = new EventEmitter<File>();
   @Output() generateBackend = new EventEmitter<void>();
+  @Output() toggleAi = new EventEmitter<void>();
   @Output() back = new EventEmitter<void>();
+
+  copiedCode = false;
 
   @ViewChild('xmiInput') xmiInput?: ElementRef<HTMLInputElement>;
 
@@ -33,6 +39,10 @@ export class ToolbarComponent {
   }
 
   copyJoinCode(): void {
-    navigator.clipboard?.writeText(this.joinCode).catch(() => undefined);
+    if (!this.joinCode) return;
+    navigator.clipboard?.writeText(this.joinCode).then(() => {
+      this.copiedCode = true;
+      setTimeout(() => (this.copiedCode = false), 2000);
+    }).catch(() => undefined);
   }
 }

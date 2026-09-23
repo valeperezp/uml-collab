@@ -19,6 +19,8 @@ public class DiagramSummaryDto {
     private String name;
     private String description;
     private UUID ownerId;
+    private String ownerName;
+    private Boolean isOwner;
     private String joinCode;
     private Instant createdAt;
     private Instant updatedAt;

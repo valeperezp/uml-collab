@@ -1,6 +1,6 @@
 export type DataType = 'STRING' | 'TEXT' | 'INTEGER' | 'LONG' | 'DOUBLE' | 'DECIMAL' | 'BOOLEAN' | 'DATE' | 'DATETIME' | 'UUID';
 export type Visibility = 'PUBLIC' | 'PRIVATE' | 'PROTECTED' | 'PACKAGE';
-export type RelationshipType = 'ASSOCIATION' | 'AGGREGATION' | 'COMPOSITION' | 'GENERALIZATION' | 'REALIZATION';
+export type RelationshipType = 'ASSOCIATION' | 'AGGREGATION' | 'COMPOSITION' | 'GENERALIZATION' | 'REALIZATION' | 'DEPENDENCY';
 export type LockedElementType = 'CLASS' | 'RELATIONSHIP';
 
 export interface AuthResponse {
@@ -16,6 +16,8 @@ export interface DiagramSummary {
   name: string;
   description?: string;
   ownerId: string;
+  ownerName?: string;
+  isOwner?: boolean;
   joinCode: string;
   createdAt: string;
   updatedAt: string;
@@ -98,3 +100,42 @@ export interface AiCommandResponse {
   appliedOperations: unknown[];
   diagram: DiagramDetail;
 }
+
+export interface UserAiConfig {
+  provider: string;
+  model: string;
+  baseUrl: string;
+  hasCustomApiKey: boolean;
+  maskedApiKey: string | null;
+  customEnabled: boolean;
+  configured: boolean;
+  effectiveProvider: string;
+  effectiveModel: string;
+  systemDefaultAvailable: boolean;
+}
+
+export interface UserAiConfigUpdate {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+  customEnabled?: boolean;
+  clearApiKey?: boolean;
+}
+
+export interface AiTestRequest {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+  useSavedKey?: boolean;
+}
+
+export interface AiTestResponse {
+  success: boolean;
+  message: string;
+  latencyMs?: number;
+  provider?: string;
+  model?: string;
+}
+

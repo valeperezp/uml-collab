@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, EventEmitter, Input, Output, ViewChild, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 export interface AiLogEntry {
@@ -39,13 +39,30 @@ interface SpeechRecognitionLike {
   templateUrl: './ai-panel.component.html',
   styleUrl: './ai-panel.component.scss',
 })
-export class AiPanelComponent {
+export class AiPanelComponent implements OnChanges {
+  @Input() open = true;
   @Input() log: AiLogEntry[] = [];
   @Input() busy = false;
+  @Output() close = new EventEmitter<void>();
+  @Output() openSettings = new EventEmitter<void>();
   @Output() command = new EventEmitter<string>();
   @Output() imageSelected = new EventEmitter<File>();
 
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('logContainer') private logContainer?: ElementRef<HTMLDivElement>;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['log'] || changes['busy']) {
+      setTimeout(() => this.scrollToBottom(), 50);
+    }
+  }
+
+  private scrollToBottom(): void {
+    if (this.logContainer) {
+      const el = this.logContainer.nativeElement;
+      el.scrollTop = el.scrollHeight;
+    }
+  }
 
   text = '';
   listening = signal(false);

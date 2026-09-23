@@ -1,33 +1,163 @@
 <div class="ai-panel">
   <div class="header">
-    <strong>Asistente IA</strong>
-    <span class="hint">Editá el diagrama por texto, voz o subiendo una foto</span>
+    <div class="header-main">
+      <div class="title-group">
+        <div class="ai-bot-avatar">
+          <svg class="bot-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+          <span class="bot-status-ring" [class.busy]="busy"></span>
+        </div>
+        <div class="title-texts">
+          <span class="bot-title">Asistente IA</span>
+          <span class="status-indicator">
+            <span class="status-dot" [class.busy]="busy"></span>
+            {{ busy ? 'Pensando cambios…' : 'Listo para modelar' }}
+          </span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="settings-btn"
+          (click)="openSettings.emit()"
+          title="Configurar credenciales de IA (API Key / Proveedor)"
+          aria-label="Configurar credenciales de IA"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button type="button" class="minimize-btn" (click)="close.emit()" title="Ocultar asistente" aria-label="Ocultar asistente">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
   </div>
 
-  <div class="log">
-    @for (entry of log; track $index) {
-      <div class="entry" [class]="entry.role">{{ entry.text }}</div>
+  <div #logContainer class="log">
+    @if (log.length === 0) {
+      <div class="ai-welcome-box">
+        <div class="welcome-sparkle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+        </div>
+        <h4>¿Cómo puedo ayudarte?</h4>
+        <p>Pídeme crear clases, atributos, relaciones o sube una foto de tu pizarra.</p>
+        <div class="suggestion-chips">
+          <button type="button" class="chip-btn" (click)="text = 'Crea una clase Usuario con id, nombre y email'; send()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span>Clase Usuario</span>
+          </button>
+          <button type="button" class="chip-btn" (click)="text = 'Crea una clase Pedido y relacionarla con Cliente'; send()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span>Pedido → Cliente</span>
+          </button>
+        </div>
+        <div class="ai-settings-hint-row">
+          <button type="button" class="btn-config-link" (click)="openSettings.emit()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>Configurar proveedor / API Key de IA</span>
+          </button>
+        </div>
+      </div>
     }
+
+    @for (entry of log; track $index) {
+      <div class="entry" [class]="entry.role">
+        @if (entry.role === 'assistant') {
+          <span class="entry-avatar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            </svg>
+          </span>
+        }
+        <div class="entry-bubble">
+          <div>{{ entry.text }}</div>
+          @if (entry.role === 'error' && (entry.text.includes('configurad') || entry.text.includes('API') || entry.text.includes('clave') || entry.text.includes('Key'))) {
+            <button type="button" class="error-action-btn" (click)="openSettings.emit()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Configurar mis credenciales de IA</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
     @if (busy) {
-      <div class="entry assistant">Pensando…</div>
+      <div class="entry assistant loading">
+        <span class="entry-avatar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+        </span>
+        <div class="entry-bubble loading-bubble">
+          <span class="thinking-dots"><span>•</span><span>•</span><span>•</span></span>
+          <span>Aplicando operaciones…</span>
+        </div>
+      </div>
     }
   </div>
 
   <div class="composer">
-    <input
-      type="text"
-      placeholder='Ej: "crea una clase Cliente con nombre y correo"'
-      [(ngModel)]="text"
-      (keyup.enter)="send()"
-      [disabled]="busy"
-    />
-    @if (voiceSupported()) {
-      <button type="button" class="icon-btn" [class.active]="listening()" (click)="toggleVoice()" title="Hablar">
-        🎤
+    <div class="input-wrapper">
+      <input
+        type="text"
+        placeholder='Ej: "crea clase Factura con total y fecha"'
+        [(ngModel)]="text"
+        (keyup.enter)="send()"
+        [disabled]="busy"
+      />
+    </div>
+    <div class="composer-actions">
+      @if (voiceSupported()) {
+        <button
+          type="button"
+          class="icon-btn voice-btn"
+          [class.active]="listening()"
+          (click)="toggleVoice()"
+          [title]="listening() ? 'Detener voz' : 'Hablar por micrófono'"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+      }
+      <button type="button" class="icon-btn" (click)="triggerImagePicker()" title="Subir foto del diagrama (Pizarra/Papel)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
       </button>
-    }
-    <button type="button" class="icon-btn" (click)="triggerImagePicker()" title="Subir foto del diagrama">📷</button>
-    <button type="button" class="send-btn" (click)="send()" [disabled]="busy || !text.trim()">Enviar</button>
+      <button type="button" class="send-btn" (click)="send()" [disabled]="busy || !text.trim()" title="Enviar mensaje">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        <span>Enviar</span>
+      </button>
+    </div>
   </div>
 
   <input #fileInput type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onFileChange($event)" />

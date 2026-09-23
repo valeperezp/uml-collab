@@ -54,9 +54,9 @@ public class CodeGenService {
 
                 for (ClassPlan plan : plans) {
                     writeEntry(zip, srcRoot + "model/" + plan.className + ".java", renderer.renderEntity(plan, basePackage, plans));
-                    writeEntry(zip, srcRoot + "dto/" + plan.className + "Dto.java", renderer.renderDto(plan, basePackage));
+                    writeEntry(zip, srcRoot + "dto/" + plan.className + "Dto.java", renderer.renderDto(plan, basePackage, plans));
                     writeEntry(zip, srcRoot + "repository/" + plan.className + "Repository.java", renderer.renderRepository(plan, basePackage));
-                    writeEntry(zip, srcRoot + "service/" + plan.className + "Service.java", renderer.renderService(plan, basePackage));
+                    writeEntry(zip, srcRoot + "service/" + plan.className + "Service.java", renderer.renderService(plan, basePackage, plans));
                     writeEntry(zip, srcRoot + "controller/" + plan.className + "Controller.java", renderer.renderController(plan, basePackage));
                 }
             }

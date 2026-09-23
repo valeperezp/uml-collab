@@ -1,20 +1,128 @@
-<div class="toolbar">
-  <div class="left">
-    <button class="ghost" (click)="back.emit()">← Diagramas</button>
-    <div class="title">
-      <strong>{{ diagramName }}</strong>
-      <span class="code" (click)="copyJoinCode()" title="Copiar código de invitación">código: {{ joinCode }}</span>
+<header class="toolbar">
+  <div class="toolbar-left">
+    <button type="button" class="btn-back" (click)="back.emit()" title="Volver a mis diagramas">
+      <svg class="btn-icon-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      <span class="btn-label">Mis diagramas</span>
+    </button>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="diagram-meta-group">
+      <div class="title-row">
+        <svg class="title-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+        <h1 class="diagram-title" [title]="diagramName">{{ diagramName || 'Sin título' }}</h1>
+      </div>
+      <button
+        type="button"
+        class="join-code-chip"
+        [class.copied]="copiedCode"
+        (click)="copyJoinCode()"
+        [title]="copiedCode ? '¡Código copiado al portapapeles!' : 'Click para copiar código de invitación'"
+      >
+        @if (copiedCode) {
+          <svg class="chip-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        } @else {
+          <svg class="chip-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        }
+        <span class="chip-text">{{ copiedCode ? '¡Copiado!' : 'CÓDIGO: ' + joinCode }}</span>
+      </button>
     </div>
   </div>
 
-  <div class="right">
-    <button (click)="newClass.emit()">+ Clase</button>
-    <button class="ghost" (click)="exportXmi.emit()">Exportar XMI</button>
-    <button class="ghost" (click)="triggerImport()">Importar XMI</button>
-    <button class="primary" (click)="generateBackend.emit()" [disabled]="generating">
-      {{ generating ? 'Generando…' : '⚙ Generar backend' }}
-    </button>
+  <div class="toolbar-right">
+    <!-- Group: Diagram Editing -->
+    <div class="action-cluster">
+      <button type="button" class="btn-pill btn-add-class" (click)="newClass.emit()" title="Agregar nueva entidad / clase (UML)">
+        <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span class="btn-label">Nueva Clase</span>
+      </button>
+      <button type="button" class="btn-pill btn-danger-ghost" (click)="clearDiagram.emit()" title="Limpiar todas las clases del lienzo">
+        <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+        <span class="btn-label">Limpiar</span>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Group: Interoperability (XMI) -->
+    <div class="action-cluster">
+      <button type="button" class="btn-pill btn-ghost" (click)="exportXmi.emit()" title="Exportar a XMI 2.1 para Enterprise Architect">
+        <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="btn-label">Exportar XMI</span>
+      </button>
+      <button type="button" class="btn-pill btn-ghost" (click)="triggerImport()" title="Importar archivo XMI 2.1">
+        <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span class="btn-label">Importar XMI</span>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Group: Backend CodeGen & AI Assistant -->
+    <div class="action-cluster">
+      <button
+        type="button"
+        class="btn-pill btn-codegen"
+        (click)="generateBackend.emit()"
+        [disabled]="generating"
+        title="Generar y descargar proyecto Spring Boot completo en ZIP"
+      >
+        @if (generating) {
+          <span class="spinner-sm"></span>
+          <span class="btn-label">Generando ZIP…</span>
+        } @else {
+          <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <span class="btn-label">Generar backend</span>
+        }
+      </button>
+
+      <button
+        type="button"
+        class="btn-pill btn-ai-toggle"
+        [class.active]="aiPanelOpen"
+        [class.busy]="aiBusy"
+        (click)="toggleAi.emit()"
+        title="Abrir / Cerrar asistente inteligente de diagramación"
+      >
+        <svg class="btn-icon-svg sparkle-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+        </svg>
+        <span class="btn-label">Asistente IA</span>
+        @if (aiBusy) {
+          <span class="ai-pulse-dot" title="Pensando…"></span>
+        }
+      </button>
+    </div>
   </div>
 
   <input #xmiInput type="file" accept=".xmi,.xml" hidden (change)="onXmiFile($event)" />
-</div>
+</header>

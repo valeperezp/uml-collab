@@ -123,6 +123,11 @@ public class LockService {
         lockRepository.deleteByUserId(userId);
     }
 
+    @Transactional
+    public void releaseAllForDiagram(UUID diagramId) {
+        lockRepository.deleteByDiagramId(diagramId);
+    }
+
     /** Corre periodicamente para liberar locks huerfanos (clientes que se desconectaron sin avisar). */
     @Scheduled(fixedDelayString = "${umlcollab.lock.ttl-seconds}000")
     @Transactional

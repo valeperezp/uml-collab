@@ -3,107 +3,418 @@
     [diagramName]="diagram()?.name ?? ''"
     [joinCode]="diagram()?.joinCode ?? ''"
     [generating]="generatingBackend()"
+    [aiPanelOpen]="aiPanelOpen()"
+    [aiBusy]="aiBusy()"
     (back)="goBack()"
     (newClass)="addClass()"
+    (clearDiagram)="clearDiagram()"
     (exportXmi)="exportXmi()"
     (importXmi)="importXmi($event)"
     (generateBackend)="generateBackend()"
+    (toggleAi)="toggleAiPanel()"
   ></app-toolbar>
 
   <div class="body">
     <div class="canvas-wrapper">
+      <!-- Floating Top Canvas Bar -->
       <div class="canvas-toolbar">
         <app-presence-bar [people]="presence()" [connected]="connected()"></app-presence-bar>
+
         @if (connectingFromClassId()) {
-          <span class="connect-hint">Elegí la clase destino para la relación… (o hacé click en ⇢ de nuevo para cancelar)</span>
+          <div class="connect-hint-banner">
+            <span class="pulse-indicator"></span>
+            <span>Selecciona la clase destino para la relación (o haz clic en la misma clase para relación recursiva)</span>
+          </div>
+        }
+
+        @if (errorMessage(); as msg) {
+          <div class="error-hint-banner" (click)="errorMessage.set(null)" title="Click para descartar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>{{ msg }}</span>
+            <span class="banner-close">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </span>
+          </div>
         }
       </div>
 
-      <div #canvas class="canvas">
-        <svg class="relationships-layer">
+      <!-- Interactive Canvas -->
+      <div
+        #canvas
+        class="canvas"
+        [class.panning]="isPanning()"
+        [ngStyle]="canvasBackgroundStyle()"
+        (mousedown)="onCanvasMouseDown($event)"
+        (wheel)="onCanvasWheel($event)"
+      >
+        <div
+          class="canvas-world"
+          [style.transform]="'translate(' + panX() + 'px, ' + panY() + 'px) scale(' + zoom() + ')'"
+        >
+          <!-- SVG Relationships Layer -->
+          <svg class="relationships-layer">
+            <defs>
+              <!-- Asociación / Dependencia: flecha abierta en extremo destino -->
+              <marker
+                id="rel-arrow-association"
+                markerWidth="14"
+                markerHeight="14"
+                refX="12"
+                refY="7"
+                orient="auto"
+                markerUnits="userSpaceOnUse"
+                viewBox="0 0 14 14"
+              >
+                <path
+                  d="M 2,2 L 12,7 L 2,12"
+                  fill="none"
+                  stroke="#6d28d9"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </marker>
+              <!-- Generalización / Realización: triángulo hueco blanco en extremo destino (UML estándar) -->
+              <marker
+                id="rel-arrow-triangle"
+                markerWidth="18"
+                markerHeight="16"
+                refX="17"
+                refY="8"
+                orient="auto"
+                markerUnits="userSpaceOnUse"
+                viewBox="0 0 18 16"
+              >
+                <path
+                  d="M 1,2 L 17,8 L 1,14 Z"
+                  fill="#ffffff"
+                  stroke="#6d28d9"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+              </marker>
+              <!-- Agregación: rombo hueco blanco en extremo origen -->
+              <marker
+                id="rel-diamond-hollow"
+                markerWidth="20"
+                markerHeight="14"
+                refX="1"
+                refY="7"
+                orient="auto"
+                markerUnits="userSpaceOnUse"
+                viewBox="0 0 20 14"
+              >
+                <path
+                  d="M 1,7 L 10,2 L 19,7 L 10,12 Z"
+                  fill="#ffffff"
+                  stroke="#6d28d9"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+              </marker>
+              <!-- Composición: rombo relleno en extremo origen -->
+              <marker
+                id="rel-diamond-filled"
+                markerWidth="20"
+                markerHeight="14"
+                refX="1"
+                refY="7"
+                orient="auto"
+                markerUnits="userSpaceOnUse"
+                viewBox="0 0 20 14"
+              >
+                <path
+                  d="M 1,7 L 10,2 L 19,7 L 10,12 Z"
+                  fill="#6d28d9"
+                  stroke="#6d28d9"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+              </marker>
+            </defs>
+
+            @for (r of relationships(); track r.id) {
+              <g>
+                @if (relationshipPath(r).isSelf) {
+                  <path
+                    [attr.d]="relationshipPath(r).d"
+                    [attr.stroke-dasharray]="(r.type === 'REALIZATION' || r.type === 'DEPENDENCY') ? '6,4' : null"
+                    [attr.marker-start]="relationshipMarkerStart(r)"
+                    [attr.marker-end]="relationshipMarkerEnd(r)"
+                    fill="none"
+                    class="rel-line"
+                  />
+                } @else {
+                  <line
+                    [attr.x1]="relationshipPath(r).x1" [attr.y1]="relationshipPath(r).y1"
+                    [attr.x2]="relationshipPath(r).x2" [attr.y2]="relationshipPath(r).y2"
+                    [attr.stroke-dasharray]="(r.type === 'REALIZATION' || r.type === 'DEPENDENCY') ? '6,4' : null"
+                    [attr.marker-start]="relationshipMarkerStart(r)"
+                    [attr.marker-end]="relationshipMarkerEnd(r)"
+                    class="rel-line"
+                  />
+                }
+              </g>
+            }
+          </svg>
+
+          <!-- Cardinality, Labels & Delete Handles -->
           @for (r of relationships(); track r.id) {
-            <g>
-              <line
-                [attr.x1]="relationshipPath(r).x1" [attr.y1]="relationshipPath(r).y1"
-                [attr.x2]="relationshipPath(r).x2" [attr.y2]="relationshipPath(r).y2"
-                [class]="'rel-line ' + r.type.toLowerCase()"
-              />
-            </g>
+            @if (r.label && r.label.trim() !== '') {
+              <div
+                class="rel-label rel-label--name"
+                [style.left.px]="relationshipPath(r).labelX"
+                [style.top.px]="relationshipPath(r).labelY"
+                (mousedown)="onLabelMouseDown($event, r.id)"
+                [title]="'Arrastrá para mover nombre/rol (' + r.label + ')'"
+              >
+                {{ r.label }}
+              </div>
+            }
+            <div
+              class="rel-label rel-label--type"
+              [style.left.px]="relationshipPath(r).midX"
+              [style.top.px]="relationshipPath(r).midY"
+              (mousedown)="$event.stopPropagation()"
+              (click)="onDeleteRelationship(r); $event.stopPropagation()"
+              [title]="'Eliminar relación: ' + r.sourceClassName + (r.sourceClassId === r.targetClassId ? ' (recursiva)' : ' → ' + r.targetClassName) + (r.label ? ' (' + r.label + ')' : '')"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </div>
+            @if (r.type !== 'GENERALIZATION' && r.type !== 'REALIZATION') {
+              @if (r.sourceMultiplicity && r.sourceMultiplicity.trim() !== '' && r.sourceMultiplicity !== 'Ninguno') {
+                <div
+                  class="rel-label rel-label--mult"
+                  [style.left.px]="relationshipPath(r).sourceLabelX"
+                  [style.top.px]="relationshipPath(r).sourceLabelY"
+                  (mousedown)="onMultLabelMouseDown($event, r.id, 'source')"
+                  [title]="'Arrastrá para mover cardinalidad (' + r.sourceMultiplicity + ')'"
+                >
+                  {{ r.sourceMultiplicity }}
+                </div>
+              }
+              @if (r.targetMultiplicity && r.targetMultiplicity.trim() !== '' && r.targetMultiplicity !== 'Ninguno') {
+                <div
+                  class="rel-label rel-label--mult"
+                  [style.left.px]="relationshipPath(r).targetLabelX"
+                  [style.top.px]="relationshipPath(r).targetLabelY"
+                  (mousedown)="onMultLabelMouseDown($event, r.id, 'target')"
+                  [title]="'Arrastrá para mover cardinalidad (' + r.targetMultiplicity + ')'"
+                >
+                  {{ r.targetMultiplicity }}
+                </div>
+              }
+            }
           }
-        </svg>
 
-        @for (r of relationships(); track r.id) {
-          <div
-            class="rel-label"
-            [style.left.px]="relationshipPath(r).midX"
-            [style.top.px]="relationshipPath(r).midY"
-            (click)="onDeleteRelationship(r)"
-            [title]="'Click para eliminar · ' + r.sourceClassName + ' -> ' + r.targetClassName"
-          >
-            {{ relationshipLabel(r) }}
-          </div>
-        }
+          <!-- UML Class Entities -->
+          @for (c of classes(); track c.id) {
+            <app-class-box
+              [classDto]="c"
+              [lockedByOther]="lockOwnerNameFor(c.id)"
+              [connecting]="connectingFromClassId() !== null"
+              [connectSource]="connectingFromClassId() === c.id"
+              (dragStart)="onDragStart($event, c)"
+              (rename)="onRename(c, $event)"
+              (deleteClass)="onDeleteClass(c)"
+              (addAttribute)="onAddAttribute(c, $event)"
+              (removeAttribute)="onRemoveAttribute(c, $event)"
+              (startConnect)="onStartConnect(c)"
+              (bodyClick)="onBodyClick(c)"
+            ></app-class-box>
+          }
 
-        @for (c of classes(); track c.id) {
-          <app-class-box
-            [classDto]="c"
-            [lockedByOther]="lockOwnerNameFor(c.id)"
-            [connecting]="connectingFromClassId() !== null"
-            [connectSource]="connectingFromClassId() === c.id"
-            (dragStart)="onDragStart($event, c)"
-            (rename)="onRename(c, $event)"
-            (deleteClass)="onDeleteClass(c)"
-            (addAttribute)="onAddAttribute(c, $event)"
-            (removeAttribute)="onRemoveAttribute(c, $event)"
-            (startConnect)="onStartConnect(c)"
-            (bodyClick)="onBodyClick(c)"
-          ></app-class-box>
-        }
+          <!-- Empty Canvas Callout -->
+          @if (classes().length === 0) {
+            <div class="empty-canvas-callout">
+              <div class="callout-sparkle">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="9" y1="21" x2="9" y2="9"/>
+                </svg>
+              </div>
+              <h3>Lienzo en blanco</h3>
+              <p>Comienza agregando una clase con el botón "+ Nueva Clase" o escribe en el Asistente IA.</p>
+            </div>
+          }
+        </div>
 
-        @if (classes().length === 0) {
-          <div class="empty-hint">
-            Todavía no hay clases. Usá "+ Clase", pedile al asistente de IA que cree una, o subí una foto del diagrama.
-          </div>
-        }
+        <!-- Floating Bottom-Left Canvas Controls Dock -->
+        <div class="canvas-controls-dock" (mousedown)="$event.stopPropagation()">
+          <button type="button" class="dock-btn" (click)="zoomOut()" title="Alejar (Zoom -)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <button type="button" class="dock-btn zoom-indicator" (click)="resetZoom()" title="Restablecer zoom al 100%">
+            {{ Math.round(zoom() * 100) }}%
+          </button>
+          <button type="button" class="dock-btn" (click)="zoomIn()" title="Acercar (Zoom +)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <div class="dock-divider"></div>
+          <button type="button" class="dock-btn btn-center-view" (click)="centerDiagram()" title="Centrar diagrama en pantalla">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+            <span>Centrar</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <app-ai-panel [log]="aiLog()" [busy]="aiBusy()" (command)="onAiCommand($event)" (imageSelected)="onAiImage($event)"></app-ai-panel>
+    @if (aiPanelOpen()) {
+      <div class="ai-drawer-backdrop" (click)="closeAiPanel()"></div>
+    }
+
+    <app-ai-panel
+      class="diagram-ai-panel"
+      [class.open]="aiPanelOpen()"
+      [open]="aiPanelOpen()"
+      [log]="aiLog()"
+      [busy]="aiBusy()"
+      (close)="closeAiPanel()"
+      (openSettings)="aiSettingsOpen.set(true)"
+      (command)="onAiCommand($event)"
+      (imageSelected)="onAiImage($event)"
+    ></app-ai-panel>
   </div>
 
+  <!-- Modal: Crear Relación -->
   @if (pendingRelationship(); as pending) {
     <div class="modal-backdrop" (click)="cancelRelationship()">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <h3>{{ pending.sourceName }} → {{ pending.targetName }}</h3>
-        <label>
-          Tipo de relación
-          <select [(ngModel)]="relType">
-            @for (t of relationshipTypes; track t) {
-              <option [value]="t">{{ t }}</option>
-            }
-          </select>
-        </label>
-        @if (relType !== 'GENERALIZATION') {
-          <div class="mult-row">
-            <label>
-              Multiplicidad origen
-              <select [(ngModel)]="sourceMult">
-                @for (m of multiplicities; track m) { <option [value]="m">{{ m }}</option> }
-              </select>
-            </label>
-            <label>
-              Multiplicidad destino
-              <select [(ngModel)]="targetMult">
-                @for (m of multiplicities; track m) { <option [value]="m">{{ m }}</option> }
-              </select>
-            </label>
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-icon-badge" [class.badge-recursive-icon]="pending.sourceId === pending.targetId">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
           </div>
-        }
-        <div class="modal-actions">
-          <button class="ghost" (click)="cancelRelationship()">Cancelar</button>
-          <button class="primary" (click)="confirmRelationship()">Crear relación</button>
+          <div>
+            <h3>Nueva relación UML</h3>
+            <p class="modal-sub">
+              @if (pending.sourceId === pending.targetId) {
+                <strong>{{ pending.sourceName }}</strong> <span class="badge-recursive-tag">Recursiva / A sí misma</span>
+              } @else {
+                <strong>{{ pending.sourceName }}</strong> → <strong>{{ pending.targetName }}</strong>
+              }
+            </p>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <label class="modal-field">
+            <span class="field-title">Tipo de relación</span>
+            <select class="modal-select" [ngModel]="relType" (ngModelChange)="onRelTypeChange($event)">
+              @for (t of relationshipTypes; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="modal-field">
+            <span class="field-title">Nombre / Rol de la relación (opcional)</span>
+            <input
+              class="modal-input"
+              type="text"
+              placeholder="Ej: tiene, supervisa, pertenece"
+              [(ngModel)]="relLabel"
+            />
+          </label>
+
+          @if (relType !== 'GENERALIZATION' && relType !== 'REALIZATION') {
+            <div class="mult-grid">
+              <label class="modal-field">
+                <span class="field-title">Multiplicidad origen ({{ pending.sourceName }})</span>
+                <select class="modal-select" [(ngModel)]="sourceMult">
+                  @for (m of multiplicities; track m.value) {
+                    <option [value]="m.value">{{ m.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="modal-field">
+                <span class="field-title">Multiplicidad destino ({{ pending.targetName }})</span>
+                <select class="modal-select" [(ngModel)]="targetMult">
+                  @for (m of multiplicities; track m.value) {
+                    <option [value]="m.value">{{ m.label }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+
+            @if (sourceMult.includes('*') && targetMult.includes('*') && pending.sourceId !== pending.targetId) {
+              <div class="nm-info-box">
+                <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>
+                  Al ser una relación de muchos a muchos (* a *), se creará automáticamente la entidad intermedia
+                  <strong>{{ pending.sourceName }}{{ pending.targetName }}</strong> con sus dos relaciones.
+                </span>
+              </div>
+            }
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-ghost" (click)="cancelRelationship()">Cancelar</button>
+          <button type="button" class="btn-modal-primary" (click)="confirmRelationship()">Crear relación</button>
         </div>
       </div>
     </div>
   }
+
+  <!-- Modal: Limpiar Diagrama -->
+  @if (showClearConfirm()) {
+    <div class="modal-backdrop" (click)="showClearConfirm.set(false)">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-icon-badge danger-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </div>
+          <div>
+            <h3>¿Limpiar todo el diagrama?</h3>
+            <p class="modal-sub">Esta acción eliminará todas las clases y relaciones creadas.</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-ghost" (click)="showClearConfirm.set(false)">Cancelar</button>
+          <button type="button" class="btn-modal-danger" (click)="confirmClearDiagram()">
+            Sí, limpiar todo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: Configuración de IA -->
+  <app-ai-settings-modal
+    [open]="aiSettingsOpen()"
+    (close)="aiSettingsOpen.set(false)"
+  ></app-ai-settings-modal>
 </div>

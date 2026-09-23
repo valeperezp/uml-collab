@@ -49,14 +49,22 @@ public final class NameUtils {
 
     private static String[] splitWords(String raw) {
         if (raw == null || raw.isBlank()) return new String[]{"Entidad"};
+        // Normaliza acentos y enyes (ej. "AÑO" -> "ANO", "dirección" -> "direccion")
+        String normalized = java.text.Normalizer.normalize(raw.trim(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
         // separa por espacios/guiones/underscores y tambien en los cambios minuscula->mayuscula (camelCase de entrada)
-        String spaced = raw.trim().replaceAll("([a-z0-9])([A-Z])", "$1 $2");
+        String spaced = normalized.replaceAll("([a-z0-9])([A-Z])", "$1 $2");
         String[] rawParts = NON_ALNUM.matcher(spaced).replaceAll(" ").trim().split("\\s+");
         java.util.List<String> parts = new java.util.ArrayList<>();
         for (String p : rawParts) {
             if (!p.isBlank()) parts.add(p);
         }
         return parts.isEmpty() ? new String[]{"Entidad"} : parts.toArray(new String[0]);
+    }
+
+    public static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     private static String ensureValidStart(String identifier) {
